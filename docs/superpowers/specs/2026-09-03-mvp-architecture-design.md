@@ -51,15 +51,16 @@ job-hunter-ai/
 │   ├── config/
 │   │   ├── loader.py
 │   │   └── templates/
-│   │       └── email.template.html
+│   │       └── email-body.example.html
 │   └── cli/
 │       └── main.py                 # Typer app: list-jobs, apply-job
 ├── config/
 │   ├── templates/
-│   │   └── email.template.html     # versionado
+│   │   └── email-body.example.html     # versionado
 │   ├── config.example.yaml         # versionado
 │   └── local/                      # gitignored
 │       ├── config.yaml
+│       ├── email-body.html         # versão real do usuário
 │       ├── resume.pdf
 │       └── sources/
 │           └── <plataforma>.yaml   # config específica por source, quando houver
@@ -154,7 +155,7 @@ Cada comando imprime JSON no stdout (sucesso) ou stderr (erro estruturado, `{"er
 
 ## Estáticos (email)
 
-- **Body**: `config/templates/email.template.html`, versionado no git. HTML com placeholders (`{{job.title}}`, `{{company}}`, `{{candidate.name}}`...), resolvido via engine simples (Jinja2). `EmailApplier` envia multipart (`text/html` + fallback texto).
+- **Body**: `config/templates/email-body.example.html` versionado (exemplo/ponto de partida) + `config/local/email-body.html` gitignored (versão real do usuário, com seu HTML/estilo). `EmailApplier` usa o local se existir, senão cai no example. Placeholders (`{{job.title}}`, `{{company}}`, `{{candidate.name}}`...), resolvido via engine simples (Jinja2). Envia multipart (`text/html` + fallback texto).
 - **PDF**: `config/local/resume.pdf` (caminho configurável via `config.yaml` → `resume_pdf_path`), gitignored — dado pessoal.
 - **Assunto**: vem via flag `--subject` de quem chama `apply-job` (fase 1); se omitido, usa `default_subject_template` da config local.
 

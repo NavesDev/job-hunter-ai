@@ -35,14 +35,14 @@ src/
 │   └── repository/  SqliteJobRepository
 ├── config/
 │   ├── loader.py
-│   └── templates/   email.template.html
+│   └── templates/   email-body.example.html
 └── cli/
     └── main.py       list-jobs, apply-job
 
 config/
-├── templates/email.template.html   versionado
-├── config.example.yaml             versionado
-└── local/                          gitignored: config.yaml, resume.pdf, sources/<plataforma>.yaml
+├── templates/email-body.example.html   versionado (exemplo)
+├── config.example.yaml                 versionado (exemplo)
+└── local/                              gitignored: config.yaml, email-body.html, resume.pdf, sources/<plataforma>.yaml
 
 tests/
 ├── unit/         use cases com ports mockados

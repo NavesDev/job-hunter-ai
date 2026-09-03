@@ -18,7 +18,9 @@ cd job-hunter-ai
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 cp config/config.example.yaml config/local/config.yaml
+cp config/templates/email-body.example.html config/local/email-body.html
 # edite config/local/config.yaml com seus dados (SMTP, currículo, nome)
+# personalize config/local/email-body.html (HTML livre, com seu estilo)
 # coloque seu currículo em config/local/resume.pdf (ou aponte outro caminho no config.yaml)
 ```
 
@@ -56,7 +58,7 @@ apply-job --all-ready --method email
 | `--subject` | não | Assunto do email; sem isso usa o default configurado |
 | `--all-ready` | não | Aplica em lote nas vagas já processadas |
 
-Corpo do email (`config/templates/email.template.html`) e PDF do currículo (`config/local/resume.pdf`) são sempre fixos — só o método, o email e o assunto variam por chamada. `--method form` exige um applier registrado pra plataforma da vaga; sem isso, retorna `status=skipped` sem travar o restante do fluxo.
+Corpo do email (`config/local/email-body.html`, ou `config/templates/email-body.example.html` se o local não existir) e PDF do currículo (`config/local/resume.pdf`) são sempre fixos — só o método, o email e o assunto variam por chamada. `--method form` exige um applier registrado pra plataforma da vaga; sem isso, retorna `status=skipped` sem travar o restante do fluxo.
 
 ### Saída e erros
 
