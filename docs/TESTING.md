@@ -9,7 +9,7 @@
 Todo teste comentado em 3 blocos, sempre nessa ordem, sempre esses comentários:
 
 ```python
-def test_apply_job_returns_skipped_when_no_applier_registered():
+def test_apply_job_should_return_skipped_when_no_applier_registered():
     # Arrange
     job = build_job(source="unknown-platform")
     use_case = ApplyJobUseCase(appliers={}, repo=FakeJobRepository())
@@ -42,7 +42,9 @@ Todo código novo em `domain/`, `application/`, `infra/` exige teste no mesmo PR
 
 ## Nomeação
 
-`test_<unidade>_<comportamento_esperado>_when_<condição>` — nome do teste é a especificação, deve dar pra entender o que quebrou só lendo o nome no CI, sem abrir o arquivo.
+`test_<unidade>_should_<comportamento_esperado>_when_<condição>` — nome do teste é a especificação, deve dar pra entender o que quebrou só lendo o nome no CI, sem abrir o arquivo.
+
+Exemplo: `test_apply_job_should_return_skipped_when_no_applier_registered`.
 
 ## Fakes vs Mocks
 
