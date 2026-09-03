@@ -4,7 +4,7 @@
 
 Scripts CLI **puros e desacoplados de IA**: qualquer agente (Claude Code, outro LLM, ou humano) orquestra por fora — decide se aplica e com quais dados — e chama os scripts via flag/argumento. Trabalho mecânico (enviar email, preencher formulário conhecido) fica em código determinístico.
 
-Documentação completa: [Arquitetura](docs/ARCHITECTURE.md) · [Features e planejamento](docs/FEATURES.md) · [Design MVP (spec)](docs/superpowers/specs/2026-09-03-mvp-architecture-design.md)
+Documentação completa: [Arquitetura](docs/ARCHITECTURE.md) · [Features e planejamento](docs/FEATURES.md) · [Contrato de CLI](docs/CONTRACT.md) · [Padrões de código](docs/CODE_STANDARDS.md) · [Padrões de teste](docs/TESTING.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Design MVP (spec)](docs/superpowers/specs/2026-09-03-mvp-architecture-design.md)
 
 ## Status
 
@@ -89,11 +89,13 @@ pip install -e ".[dev]"
 pytest
 ```
 
-Testes seguem padrão **AAA** (Arrange/Act/Assert, comentado no código). Todo código novo em `domain/`, `application/`, `infra/` precisa de teste antes de merge.
+Testes seguem padrão **AAA** (Arrange/Act/Assert, comentado no código). Todo código novo em `domain/`, `application/`, `infra/` precisa de teste antes de merge. Detalhes em [docs/TESTING.md](docs/TESTING.md).
+
+Padrões de código (SOLID, regra de dependência, estilo) em [docs/CODE_STANDARDS.md](docs/CODE_STANDARDS.md). Fluxo de contribuição em [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap
 
-Ver [docs/FEATURES.md](docs/FEATURES.md) — fase 1 (base fixa) e fase 2+ (novas plataformas, form appliers, camada de IA).
+Ver [docs/FEATURES.md](docs/FEATURES.md) — fase 1 (base fixa) e fase 2+ (novas plataformas, form appliers, camada de IA). Histórico de mudanças em [CHANGELOG.md](CHANGELOG.md).
 
 ## Licença
 
