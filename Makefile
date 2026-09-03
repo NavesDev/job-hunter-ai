@@ -1,4 +1,4 @@
-.PHONY: install lint format type test check clean
+.PHONY: install lint format type layers test check clean
 
 install:
 	python -m pip install -e ".[dev]"
@@ -14,11 +14,15 @@ format:
 type:
 	mypy
 
+# Enforces the dependency rule between layers (contracts in pyproject.toml).
+layers:
+	lint-imports
+
 test:
 	pytest
 
 # Same gate CI runs. Run it before opening a PR.
-check: lint type test
+check: lint type layers test
 	ruff format --check .
 
 clean:

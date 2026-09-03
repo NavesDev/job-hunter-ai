@@ -96,8 +96,10 @@ Every job source (`JobSource`) and every application method (`JobApplier`) is a 
 
 ```bash
 pip install -e ".[dev]"
-make check     # ruff + ruff format --check + mypy + pytest (same gate as CI)
+make check     # ruff + ruff format --check + mypy + import-linter + pytest (same gate as CI)
 ```
+
+The dependency rule between layers is enforced, not just documented: `import-linter` contracts declared in `pyproject.toml` fail the build if `application/` ever imports `infra/`, or if anything leaks into `domain/`.
 
 Tests follow the **AAA** pattern (Arrange/Act/Assert, spelled out in comments). Every new piece of code in `domain/`, `application/` or `infra/` needs a test before merge. See [docs/TESTING.md](docs/TESTING.md), [docs/CODE_STANDARDS.md](docs/CODE_STANDARDS.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 

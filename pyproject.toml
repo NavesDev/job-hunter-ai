@@ -33,6 +33,7 @@ dev = [
   "ruff>=0.6",
   "mypy>=1.11",
   "types-PyYAML",
+  "import-linter>=2.0",
 ]
 
 [project.urls]
@@ -76,3 +77,37 @@ disallow_untyped_defs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+# Enforces the dependency rule from docs/ARCHITECTURE.md. Run with `lint-imports`.
+[tool.importlinter]
+root_package = "job_hunter_ai"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "domain depends on nothing"
+type = "forbidden"
+source_modules = ["job_hunter_ai.domain"]
+forbidden_modules = [
+  "job_hunter_ai.application",
+  "job_hunter_ai.infra",
+  "job_hunter_ai.config",
+  "job_hunter_ai.cli",
+]
+
+[[tool.importlinter.contracts]]
+name = "application receives ports by injection, never imports infra or cli"
+type = "forbidden"
+source_modules = ["job_hunter_ai.application"]
+forbidden_modules = ["job_hunter_ai.infra", "job_hunter_ai.cli"]
+
+[[tool.importlinter.contracts]]
+name = "infra implements ports without knowing application or cli"
+type = "forbidden"
+source_modules = ["job_hunter_ai.infra"]
+forbidden_modules = ["job_hunter_ai.application", "job_hunter_ai.cli"]
+
+[[tool.importlinter.contracts]]
+name = "domain stays free of third-party dependencies"
+type = "forbidden"
+source_modules = ["job_hunter_ai.domain"]
+forbidden_modules = ["typer", "yaml", "dotenv", "sqlite3"]

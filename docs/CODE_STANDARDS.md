@@ -26,6 +26,17 @@ The layers live under the single `src/job_hunter_ai/` package ([ADR-0004](adr/00
 
 Common violation to avoid: a use case importing `job_hunter_ai.infra.appliers.email_applier` directly instead of receiving a `JobApplier` in its constructor — that breaks testability and Dependency Inversion.
 
+**The rule is enforced, not just documented.** `import-linter` checks four contracts declared in `pyproject.toml`, and CI fails when one breaks:
+
+| Contract | What it forbids |
+|---|---|
+| `domain depends on nothing` | `domain/` importing `application/`, `infra/`, `config/` or `cli/` |
+| `application receives ports by injection` | `application/` importing `infra/` or `cli/` |
+| `infra implements ports` | `infra/` importing `application/` or `cli/` |
+| `domain stays free of third-party dependencies` | `domain/` importing `typer`, `yaml`, `dotenv` or `sqlite3` |
+
+Run it locally with `make layers` (or `lint-imports`); `make check` already includes it. Adding a layer or a port means adding or updating a contract in the same PR.
+
 ## SOLID — quick PR checklist
 
 - **S**: does the class do exactly one thing? If its name contains "and"/"or" (`SourceAndApplier`), probably not.

@@ -42,5 +42,8 @@ jobs:
       - name: Types
         run: mypy
 
+      - name: Layers
+        run: lint-imports
+
       - name: Tests
         run: pytest

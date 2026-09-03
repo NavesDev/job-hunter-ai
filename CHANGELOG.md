@@ -11,6 +11,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - CLI skeleton: both commands exist, validate the contract flags and answer `NOT_IMPLEMENTED` until [Sprint 01](docs/sprints/SPRINT-01-MVP.md) delivers them.
 - Versioned example configuration: `config/config.example.yaml` and `config/templates/email-body.example.html`.
 - Quality gate: GitHub Actions CI (Python 3.11 and 3.12), `.pre-commit-config.yaml`, `Makefile` (`make check`) and `.editorconfig`.
+- Layer enforcement: `import-linter` contracts in `pyproject.toml` fail the build when the dependency rule is inverted (`make layers`), covering the boundaries between `domain`, `application`, `infra` and `cli`, plus keeping `domain` free of third-party imports.
 - Initial test suite (`pytest`, AAA pattern) covering entities, errors and the CLI output contract.
 - `SECURITY.md` with a reporting policy and threat model, `CODE_OF_CONDUCT.md`, issue and pull request templates.
 - ADRs under `docs/adr/` (layered architecture, CLI as a JSON contract, config/credentials split, single package).

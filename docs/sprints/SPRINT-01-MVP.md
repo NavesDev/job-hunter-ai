@@ -21,10 +21,10 @@ Out (for later):
 
 ## Definition of done (applies to both tasks)
 
-- [ ] `make check` green (ruff + ruff format + mypy + pytest).
+- [ ] `make check` green (ruff + ruff format + mypy + import-linter + pytest).
 - [ ] A test in the AAA pattern for every new piece of code in `domain/`, `application/` and `infra/`.
 - [ ] A CLI test checking the output against [CONTRACT.md](../CONTRACT.md) (fields, exit code).
-- [ ] Dependency rule respected: `application/` receives ports by injection and never imports `infra/`.
+- [ ] Dependency rule respected: `application/` receives ports by injection and never imports `infra/` (`make layers` proves it).
 - [ ] No credential in a log, an error or the JSON output.
 - [ ] [CHANGELOG.md](../../CHANGELOG.md) updated under `Unreleased`.
 

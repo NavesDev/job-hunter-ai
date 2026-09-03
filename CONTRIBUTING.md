@@ -17,8 +17,10 @@ Read, in this order:
 ```bash
 python -m venv .venv && source .venv/bin/activate
 make install          # editable install + pre-commit hooks
-make check            # same gate as CI: ruff + format + mypy + pytest
+make check            # same gate as CI: ruff + format + mypy + import-linter + pytest
 ```
+
+`make layers` runs the layer contracts on their own — it is the check that fails when `application/` imports `infra/`, or when anything reaches into `domain/`.
 
 ## Branch naming
 

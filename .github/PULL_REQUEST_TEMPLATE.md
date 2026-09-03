@@ -19,9 +19,9 @@ make check
 
 - [ ] Branch named `type/issue-id-description` (e.g. `feat/12-manual-json-source`).
 - [ ] Conventional Commits with a layer scope: `feat(domain):`, `fix(infra):`, `test(application):`, `docs(cli):`.
-- [ ] `make check` passes locally (ruff + mypy + pytest).
+- [ ] `make check` passes locally (ruff + mypy + import-linter + pytest).
 - [ ] New code in `domain/`, `application/` or `infra/` has a test in this PR, in the AAA pattern.
-- [ ] Dependency rule respected (`domain/` imports nothing; `application/` receives ports by injection).
+- [ ] Dependency rule respected (`domain/` imports nothing; `application/` receives ports by injection) — a new layer or port also updates the `import-linter` contracts.
 - [ ] CLI contract changes reflected in [docs/CONTRACT.md](../docs/CONTRACT.md).
 - [ ] User-visible changes recorded in [CHANGELOG.md](../CHANGELOG.md) under `Unreleased`.
 - [ ] No credentials, resume or personal data in the diff.

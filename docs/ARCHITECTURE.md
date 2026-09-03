@@ -21,6 +21,8 @@ cli/  →  application/  →  domain/
 
 Every pluggable strategy (job source, application method) is a `Protocol` in `domain/ports` resolved by a **registry** — a new platform means a new class in `infra/`, with no changes to `application`/`domain` (Open/Closed, Dependency Inversion).
 
+The arrows above are enforced by `import-linter` contracts declared in `pyproject.toml` and checked by CI (`make layers`) — an import that inverts one of them fails the build. See [CODE_STANDARDS.md](CODE_STANDARDS.md#architecture-dependency-rule) for the contract list.
+
 ## Folder layout
 
 A single distributable package (`job_hunter_ai`) under `src/`, with the layers as subpackages — see [ADR-0004](adr/0004-single-package.md).
