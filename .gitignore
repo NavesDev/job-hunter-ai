@@ -1,11 +1,25 @@
-# Credenciais e config local
+# Credentials and local config
 .env
 config/local/
+
+# Local data
+*.db
+*.sqlite3
 
 # Python
 __pycache__/
 *.pyc
 .venv/
+venv/
 *.egg-info/
+build/
+dist/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
+htmlcov/
+
+# Editor
+.idea/
+.vscode/
