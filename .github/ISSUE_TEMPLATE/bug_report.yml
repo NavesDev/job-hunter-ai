@@ -1,0 +1,54 @@
+name: Bug
+description: Wrong behavior in an existing command
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: input
+    id: command
+    attributes:
+      label: Command you ran
+      description: The full line, with its flags (no credentials).
+      placeholder: list-jobs --source manual --file jobs.json
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened, according to docs/CONTRACT.md.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Real output (stdout/stderr) and exit code. Strip any personal data or credentials.
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: "0.1.0 or commit hash"
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.12.3"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmations
+      options:
+        - label: This report contains no credentials, resume or personal data.
+          required: true

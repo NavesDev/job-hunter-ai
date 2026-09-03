@@ -1,0 +1,44 @@
+name: Feature
+description: A new deliverable (new source, new application method, new CLI capability)
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Deliverable
+      description: What the user gains the ability to do. Describe the outcome, not the class or method.
+      placeholder: "I can list jobs exported as CSV without converting them to JSON first."
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: The real problem this solves today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How we know it is done. One verifiable item per line.
+      placeholder: |
+        - [ ] `list-jobs --source manual --file jobs.csv` returns the same structure as the JSON input
+        - [ ] A malformed CSV exits with INVALID_INPUT on stderr
+    validations:
+      required: true
+
+  - type: dropdown
+    id: contract
+    attributes:
+      label: Does it change the CLI contract?
+      description: New flag, new output field, new exit code or new error code.
+      options:
+        - "No"
+        - "Yes - additive (backward compatible)"
+        - "Yes - breaking (major)"
+    validations:
+      required: true
