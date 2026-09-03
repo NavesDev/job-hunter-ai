@@ -1,92 +1,95 @@
-# Arquitetura
+# Architecture
 
-Referência viva da arquitetura do projeto. Decisões e histórico de discussão: [docs/superpowers/specs/2026-09-03-mvp-architecture-design.md](superpowers/specs/2026-09-03-mvp-architecture-design.md).
+Living reference for the project's architecture. Decisions are recorded in [docs/adr/](adr/README.md); the original design discussion lives in [docs/superpowers/specs/2026-09-03-mvp-architecture-design.md](superpowers/specs/2026-09-03-mvp-architecture-design.md). Database schema, job ids and idempotency are in [DATA_MODEL.md](DATA_MODEL.md).
 
-## Princípio central
+## Core principle
 
-Scripts são **puros e determinísticos, desacoplados de IA**. Qualquer agente (Claude Code, outro LLM, ou humano) orquestra por fora, chamando os scripts via CLI e passando dados de decisão por flag/argumento. Trabalho mecânico (enviar email, preencher formulário conhecido) fica em código; a IA só decide e extrai dado não-estruturado — economiza tokens do agente.
+The scripts are **pure, deterministic and AI-free**. Any agent (Claude Code, another LLM, or a human) orchestrates from the outside, calling the scripts through the CLI and passing decision data as flags and arguments. Mechanical work (sending an email, filling a known form) stays in code; the AI only decides and extracts unstructured data — which saves the agent's tokens.
 
-## Camadas
+## Layers
 
 ```
 cli/  →  application/  →  domain/
                               ↑
-                           infra/ (implementa domain/ports)
+                           infra/ (implements domain/ports)
 ```
 
-- **domain/**: entidades e contratos (`Protocol`), zero dependência externa.
-- **application/**: use cases, orquestram domain via ports injetados no construtor. Sem I/O direto.
-- **infra/**: implementações concretas (SQLite, SMTP, fontes de vaga). Implementa `domain/ports`.
-- **cli/**: entrypoint (Typer). Resolve dependências concretas via registry, chama use case, imprime JSON.
+- **domain/**: entities and contracts (`Protocol`), zero external dependencies.
+- **application/**: use cases, orchestrating the domain through ports injected in the constructor. No direct I/O.
+- **infra/**: concrete implementations (SQLite, SMTP, job sources). Implements `domain/ports`.
+- **cli/**: entrypoint (Typer). Resolves concrete dependencies through a registry, calls the use case, prints JSON.
 
-Cada strategy plugável (fonte de vaga, meio de aplicação) é um `Protocol` em `domain/ports`, resolvido por um **registry** — nova plataforma = nova classe em `infra/`, sem tocar `application`/`domain` (Open/Closed, Dependency Inversion).
+Every pluggable strategy (job source, application method) is a `Protocol` in `domain/ports` resolved by a **registry** — a new platform means a new class in `infra/`, with no changes to `application`/`domain` (Open/Closed, Dependency Inversion).
 
-## Estrutura de pastas
+## Folder layout
+
+A single distributable package (`job_hunter_ai`) under `src/`, with the layers as subpackages — see [ADR-0004](adr/0004-single-package.md).
 
 ```
-src/
+src/job_hunter_ai/
 ├── domain/
 │   ├── entities/    Job, ApplicationResult, CandidateProfile, SmtpConfig
-│   └── ports/       JobSource, JobApplier, JobRepository
+│   ├── ports/       JobSource, JobApplier, JobRepository
+│   └── errors.py    typed exceptions, each carrying its contract `code`
 ├── application/     ListJobsUseCase, ApplyJobUseCase
 ├── infra/
-│   ├── sources/     JobSource concretos (ManualJsonJobSource, ...)
-│   ├── appliers/     JobApplier concretos (EmailApplier, form appliers por plataforma)
-│   └── repository/  SqliteJobRepository
+│   ├── sources/     concrete JobSource (ManualJsonJobSource, ...)
+│   ├── appliers/    concrete JobApplier (EmailApplier, per-platform form appliers)
+│   └── repository/  SqliteJobRepository + migrations/
 ├── config/
-│   ├── loader.py
-│   └── templates/   email-body.example.html
+│   └── loader.py    combines config/local/config.yaml + .env
 └── cli/
-    └── main.py       list-jobs, apply-job
+    ├── main.py      list-jobs, apply-job
+    └── output.py    the only place that writes to stdout/stderr
 
 config/
-├── templates/email-body.example.html   versionado (exemplo)
-├── config.example.yaml                 versionado (exemplo) — configuração não-sensível
-└── local/                              gitignored: config.yaml, email-body.html, resume.pdf, sources/<plataforma>.yaml
+├── templates/email-body.example.html   versioned (example)
+├── config.example.yaml                 versioned (example) — non-sensitive settings
+└── local/                              gitignored: config.yaml, email-body.html, resume.pdf, sources/<platform>.yaml
 
-.env.example                            versionado (exemplo) — credenciais/segredos
-.env                                    gitignored — credenciais reais (SMTP, login por plataforma)
+.env.example                            versioned (example) — credentials and secrets
+.env                                    gitignored — real credentials (SMTP, per-platform logins)
 
 tests/
-├── unit/         use cases com ports mockados
-├── integration/  SQLite real, SMTP fake
+├── unit/         use cases with mocked ports
+├── integration/  real SQLite, fake SMTP
 └── cli/          Typer CliRunner
 ```
 
 ## Registries (strategy resolution)
 
-| Port | Chave de resolução | Fase 1 | Extensão |
+| Port | Resolution key | Phase 1 | Extension |
 |---|---|---|---|
-| `JobSource` | `source` | `"manual"` | novo source por plataforma |
-| `JobApplier` | `(method, source)` | `"email" → "*"` (genérico) | `"form" → <plataforma>` obrigatório por site |
+| `JobSource` | `source` | `"manual"` | one new source per platform |
+| `JobApplier` | `(method, source)` | `"email" → "*"` (generic) | `"form" → <platform>`, mandatory per site |
 
-Sem applier registrado para `(method, source)`, `apply-job` retorna `status="skipped"` — nunca falha silenciosa nem trava o fluxo.
+With no applier registered for `(method, source)`, `apply-job` returns `status="skipped"` — never a silent failure, never a blocked flow.
 
-## Config vs credenciais
+## Configuration vs credentials
 
-Duas coisas distintas, dois lugares distintos:
+Two distinct things, two distinct places:
 
-- **Configuração** (não-sensível: caminhos, template default, ordem de preferência de método): `config/local/config.yaml`, carregado por `config/loader.py`.
-- **Credenciais** (segredo: usuário/senha SMTP, login/token por plataforma): `.env` na raiz, carregado via `python-dotenv`. Nunca versionado, nunca em YAML.
+- **Configuration** (non-sensitive: paths, default template, preferred method order): `config/local/config.yaml`, loaded by `config/loader.py`.
+- **Credentials** (secret: SMTP username/password, per-platform logins/tokens): `.env` at the root, loaded through `python-dotenv`. Never committed, never in YAML.
 
-`config/loader.py` lê os dois e monta `CandidateProfile`/`SmtpConfig` combinando ambos. Credencial de plataforma específica usa prefixo por fonte (`LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD`) no mesmo `.env` — `config/local/sources/<plataforma>.yaml` fica só pra configuração não-sensível daquela plataforma (seletor, timeout), se precisar.
+`config/loader.py` reads both and assembles `CandidateProfile`/`SmtpConfig` from the combination. Platform-specific credentials use a per-source prefix (`LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD`) in the same `.env` — `config/local/sources/<platform>.yaml` only holds that platform's non-sensitive settings (selectors, timeouts), when needed.
 
-## Contratos principais
+## Main contracts
 
-Ver detalhamento completo no [spec](superpowers/specs/2026-09-03-mvp-architecture-design.md#entidades-domain). Resumo:
+Full detail in the [spec](superpowers/specs/2026-09-03-mvp-architecture-design.md#domain-entities). Summary:
 
-- `Job` — vaga normalizada, independente da origem.
-- `ApplicationResult` — resultado de uma tentativa de aplicação (`sent`/`failed`/`skipped`).
-- `CandidateProfile` — perfil do candidato (config local), inclui `extra_fields` genérico reusável por form appliers de qualquer plataforma.
+- `Job` — a normalized job posting, independent of its origin.
+- `ApplicationResult` — the outcome of an application attempt (`sent`/`failed`/`skipped`).
+- `CandidateProfile` — the candidate's profile (local config), including a generic `extra_fields` reusable by form appliers of any platform.
 
-## Erros
+## Errors
 
-`infra` lança exceções tipadas; `application`/`cli` capturam e convertem em JSON estruturado no stderr + exit code != 0. Nenhuma stack trace crua chega no agente que chamou o script.
+`infra` raises typed exceptions (`domain/errors.py`, each carrying a `code` from the [contract](CONTRACT.md)); `application`/`cli` catch them and turn them into structured JSON on stderr plus a non-zero exit code, through `cli/output.py`. No raw stack trace ever reaches the agent that called the script.
 
-## Testes
+## Tests
 
-AAA (Arrange/Act/Assert) obrigatório. `pytest`. Todo código novo em `domain/`, `application/`, `infra/` exige teste antes de merge.
+AAA (Arrange/Act/Assert) is mandatory. `pytest`. Every new piece of code in `domain/`, `application/` or `infra/` requires a test before merge.
 
-## Fora do escopo atual
+## Out of the current scope
 
-Decisão "aplicar ou não" e extração de dado não-estruturado (email/assunto da descrição) não têm script/camada própria no momento — ficam por conta do agente orquestrador externo. Ver [Features e Planejamento](FEATURES.md) para status e evolução.
+The "apply or not" decision and unstructured data extraction (pulling an address or subject out of a description) have no script or layer of their own for now — they belong to the external orchestrating agent. See [Features](FEATURES.md) for status and evolution.

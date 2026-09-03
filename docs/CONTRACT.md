@@ -1,26 +1,26 @@
-# Contrato de CLI
+# CLI contract
 
-Contrato de entrada/saída que todo script (`list-jobs`, `apply-job`, e qualquer novo comando) deve respeitar. É o que permite um agente externo (IA ou humano) consumir os scripts sem conhecer a implementação interna.
+The input/output contract every script (`list-jobs`, `apply-job`, and any new command) must honor. It is what lets an external agent (AI or human) consume the scripts without knowing anything about their internals.
 
-## Regras gerais
+## General rules
 
-1. **Stdout** só recebe JSON de sucesso. Nada de log, print de debug ou texto solto — quem consome espera `json.loads(stdout)` direto.
-2. **Stderr** recebe erro estruturado (ver formato abaixo) e logs/diagnóstico.
-3. **Exit code** `0` = sucesso. Qualquer valor `!= 0` = falha; o motivo está no JSON de erro do stderr.
-4. Todo campo de data/hora é ISO 8601 UTC (`2026-09-03T14:00:00Z`).
-5. Nenhum comando lê stdin interativamente — tudo vem de flag/argumento/arquivo apontado por flag. Scripts precisam rodar não-interativos (agente externo não responde prompt).
+1. **Stdout** carries success JSON only. No logs, no debug prints, no loose text — consumers expect `json.loads(stdout)` to work directly.
+2. **Stderr** carries the structured error (format below) plus logs and diagnostics.
+3. **Exit code** `0` means success. Anything `!= 0` means failure; the reason is in the error JSON on stderr.
+4. Every date/time field is ISO 8601 UTC (`2026-09-03T14:00:00Z`).
+5. No command reads stdin interactively — everything comes from flags, arguments, or a file pointed at by a flag. The scripts must run non-interactively (an external agent cannot answer a prompt).
 
 ## `list-jobs`
 
-**Entrada** (flags):
+**Input** (flags):
 
-| Flag | Tipo | Obrigatória | Descrição |
+| Flag | Type | Required | Description |
 |---|---|---|---|
-| `--source` | string | sim | Nome da fonte registrada (`manual`) |
-| `--file` | path | depende da fonte | Arquivo de entrada (fonte `manual`) |
-| `--max-length` | int | não (default 50) | Máximo de vagas retornadas |
+| `--source` | string | yes | Name of a registered source (`manual`) |
+| `--file` | path | source-dependent | Input file (`manual` source) |
+| `--max-length` | int | no (default 50) | Maximum number of jobs returned |
 
-**Saída** (stdout), lista de `Job`:
+**Output** (stdout), a list of `Job`:
 
 ```json
 [
@@ -39,17 +39,17 @@ Contrato de entrada/saída que todo script (`list-jobs`, `apply-job`, e qualquer
 
 ## `apply-job`
 
-**Entrada** (flags):
+**Input** (flags):
 
-| Flag | Tipo | Obrigatória | Descrição |
+| Flag | Type | Required | Description |
 |---|---|---|---|
-| `--job-id` | string | sim (ou `--all-ready`) | Id retornado por `list-jobs` |
-| `--method` | `email` \| `form` | sim | Meio de aplicação |
-| `--email` | string | se `method=email` e vaga não trouxer email | Destinatário |
-| `--subject` | string | não | Assunto; default vem da config local |
-| `--all-ready` | flag | não | Aplica em lote |
+| `--job-id` | string | yes (or `--all-ready`) | Id returned by `list-jobs` |
+| `--method` | `email` \| `form` | yes | Application method |
+| `--email` | string | if `method=email` and the job carries no address | Recipient |
+| `--subject` | string | no | Subject; defaults to the local configuration |
+| `--all-ready` | flag | no | Applies in batch |
 
-**Saída** (stdout), `ApplicationResult`:
+**Output** (stdout), an `ApplicationResult`:
 
 ```json
 {
@@ -62,18 +62,20 @@ Contrato de entrada/saída que todo script (`list-jobs`, `apply-job`, e qualquer
 }
 ```
 
-`status` é sempre um de `sent` / `failed` / `skipped`. `skipped` nunca é erro de exit code — é resultado válido (ex.: sem applier de formulário pra aquela plataforma).
+`status` is always one of `sent` / `failed` / `skipped`. `skipped` never produces a failing exit code — it is a valid result (for example, no form applier exists for that platform).
 
-## Erro (qualquer comando)
+## Errors (any command)
 
-Stderr, JSON único:
+A single JSON object on stderr:
 
 ```json
 {"error": "smtp connection refused", "code": "SMTP_ERROR"}
 ```
 
-Códigos usados na fase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`. Novo código = documentar aqui antes de usar.
+Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`. A new code must be documented here before being used.
 
-## Compatibilidade
+`NOT_IMPLEMENTED` is **temporary**: while a command exists but has not been delivered, it answers with that code. It leaves the code and this section when [Sprint 01](sprints/SPRINT-01-MVP.md) closes.
 
-Mudança que **quebra** o contrato (remover campo, mudar tipo, renomear) exige nova major version do pacote e entrada no [CHANGELOG](../CHANGELOG.md) em `BREAKING`. Adicionar campo novo em resposta é sempre compatível (consumidor deve ignorar campo desconhecido).
+## Compatibility
+
+A change that **breaks** the contract (removing a field, changing a type, renaming something) requires a new major version of the package and a `BREAKING` entry in the [CHANGELOG](../CHANGELOG.md). Adding a new field to a response is always compatible (consumers must ignore unknown fields).

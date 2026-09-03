@@ -1,102 +1,122 @@
 # job-hunter-ai
 
-🤖 Base para automatizar aplicação em vagas de emprego, integrável a agentes de IA (locais ou externos).
+[![CI](https://github.com/NavesDev/job-hunter-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/NavesDev/job-hunter-ai/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230)](https://docs.astral.sh/ruff/)
 
-Scripts CLI **puros e desacoplados de IA**: qualquer agente (Claude Code, outro LLM, ou humano) orquestra por fora — decide se aplica e com quais dados — e chama os scripts via flag/argumento. Trabalho mecânico (enviar email, preencher formulário conhecido) fica em código determinístico.
+🤖 A foundation for automating job applications, designed to be driven by AI agents (local or external).
 
-Documentação completa: [Arquitetura](docs/ARCHITECTURE.md) · [Features e planejamento](docs/FEATURES.md) · [Contrato de CLI](docs/CONTRACT.md) · [Padrões de código](docs/CODE_STANDARDS.md) · [Padrões de teste](docs/TESTING.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Design MVP (spec)](docs/superpowers/specs/2026-09-03-mvp-architecture-design.md)
+The CLI scripts are **pure and AI-free**: any agent (Claude Code, another LLM, or a human) orchestrates from the outside — deciding whether to apply and with which data — and calls the scripts through flags and arguments. The mechanical work (sending an email, filling a known form) stays in deterministic code.
+
+Docs: [Architecture](docs/ARCHITECTURE.md) · [Features](docs/FEATURES.md) · [Current sprint](docs/sprints/SPRINT-01-MVP.md) · [CLI contract](docs/CONTRACT.md) · [Data model](docs/DATA_MODEL.md) · [Code standards](docs/CODE_STANDARDS.md) · [Testing standards](docs/TESTING.md) · [ADRs](docs/adr/README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 ## Status
 
-🚧 Em desenvolvimento (fase 1 — documentação/design concluída, implementação não iniciada).
+🚧 **Pre-alpha.** The foundation is in place (installable package, CLI contract, CI, tests). The `list-jobs` and `apply-job` commands exist but still answer `NOT_IMPLEMENTED` — delivering them is [Sprint 01](docs/sprints/SPRINT-01-MVP.md).
 
-## Instalação
+## Requirements
+
+Python 3.11+.
+
+## Installation
 
 ```bash
-git clone <repo>
+git clone git@github.com:NavesDev/job-hunter-ai.git
 cd job-hunter-ai
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
+
 cp config/config.example.yaml config/local/config.yaml
 cp config/templates/email-body.example.html config/local/email-body.html
 cp .env.example .env
-# edite config/local/config.yaml com configuração não-sensível (nome, currículo, preferências)
-# edite .env com credenciais (SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, ...)
-# personalize config/local/email-body.html (HTML livre, com seu estilo)
-# coloque seu currículo em config/local/resume.pdf (ou aponte outro caminho no config.yaml)
+# edit config/local/config.yaml with non-sensitive settings (name, resume, preferences)
+# edit .env with credentials (SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, ...)
+# customize config/local/email-body.html (free-form HTML, your own styling)
+# drop your resume at config/local/resume.pdf (or point elsewhere in config.yaml)
 ```
 
-`config/local/` e `.env` são gitignored. Configuração não-sensível (nome, caminhos, preferências) vai em `config/local/config.yaml`; credenciais/segredos (SMTP, login por plataforma) vão em `.env` — nunca no YAML, nunca versionados.
+`config/local/` and `.env` are gitignored. Non-sensitive settings (name, paths, preferences) live in `config/local/config.yaml`; credentials and secrets (SMTP, per-platform logins) live in `.env` — never in the YAML, never committed. Use a dedicated **app password**, never your account's main password (see [SECURITY.md](SECURITY.md)).
 
-## Uso
+## Usage
 
-### Listar vagas
+### List jobs
 
 ```bash
-list-jobs --source manual --file vagas.json --max-length 100
+list-jobs --source manual --file jobs.json --max-length 100
 ```
 
-| Flag | Obrigatória | Descrição |
+| Flag | Required | Description |
 |---|---|---|
-| `--source` | sim | Fonte de vagas registrada (`manual` na fase 1) |
-| `--file` | depende da fonte | Caminho do JSON/CSV de entrada (fonte `manual`) |
-| `--max-length` | não (default 50) | Máximo de vagas retornadas |
+| `--source` | yes | Registered job source (`manual` in phase 1) |
+| `--file` | source-dependent | Path to the input JSON/CSV (`manual` source) |
+| `--max-length` | no (default 50) | Maximum number of jobs returned |
 
-Saída: JSON no stdout, uma lista de vagas normalizadas (`id`, `title`, `company`, `description`, `url`, `raw`). Cada execução salva/deduplica no SQLite local.
+Output: JSON on stdout, a list of normalized jobs (`id`, `title`, `company`, `description`, `url`, `raw`). Every run stores and deduplicates into the local SQLite database — stable ids, no duplicates across runs ([DATA_MODEL.md](docs/DATA_MODEL.md)).
 
-### Aplicar numa vaga
+### Apply to a job
 
 ```bash
-apply-job --job-id abc123 --method email --email vaga@empresa.com --subject "Vaga Backend - Seu Nome"
+apply-job --job-id abc123 --method email --email jobs@company.com --subject "Backend role - Your Name"
 apply-job --job-id abc123 --method form
 apply-job --all-ready --method email
 ```
 
-| Flag | Obrigatória | Descrição |
+| Flag | Required | Description |
 |---|---|---|
-| `--job-id` | sim (ou `--all-ready`) | Id da vaga retornado por `list-jobs` |
-| `--method` | sim | `email` ou `form` |
-| `--email` | se `method=email` e vaga não tiver email associado | Endereço de destino |
-| `--subject` | não | Assunto do email; sem isso usa o default configurado |
-| `--all-ready` | não | Aplica em lote nas vagas já processadas |
+| `--job-id` | yes (or `--all-ready`) | Job id returned by `list-jobs` |
+| `--method` | yes | `email` or `form` |
+| `--email` | if `method=email` and the job carries no email | Destination address |
+| `--subject` | no | Email subject; falls back to the configured default |
+| `--all-ready` | no | Applies in batch to every job already collected |
 
-Corpo do email (`config/local/email-body.html`, ou `config/templates/email-body.example.html` se o local não existir) e PDF do currículo (`config/local/resume.pdf`) são sempre fixos — só o método, o email e o assunto variam por chamada. `--method form` exige um applier registrado pra plataforma da vaga; sem isso, retorna `status=skipped` sem travar o restante do fluxo.
+The email body (`config/local/email-body.html`, falling back to `config/templates/email-body.example.html`) and the resume PDF (`config/local/resume.pdf`) are always fixed — only the method, the address and the subject vary per call. `--method form` needs an applier registered for the job's platform; without one it returns `status=skipped` instead of blocking the rest of the flow.
 
-### Saída e erros
+### Output and errors
 
-Todo comando imprime JSON estruturado. Sucesso vai pro stdout; erro vai pro stderr com exit code != 0:
+Every command prints structured JSON. Success goes to stdout; failures go to stderr with a non-zero exit code:
 
 ```json
 {"error": "smtp connection refused", "code": "SMTP_ERROR"}
 ```
 
-Isso permite que um agente externo (IA ou humano) parseie o resultado sem depender de stack trace.
+This lets an external agent (AI or human) parse the result without depending on stack traces. Full contract in [docs/CONTRACT.md](docs/CONTRACT.md).
 
-## Arquitetura (resumo)
+## Architecture at a glance
 
 ```
 cli/  →  application/  →  domain/
                               ↑
-                           infra/ (implementa domain/ports)
+                           infra/ (implements domain/ports)
 ```
 
-Cada fonte de vaga (`JobSource`) e cada meio de aplicação (`JobApplier`) é uma strategy plugável, resolvida por registry — nova plataforma entra em `infra/` sem tocar `application`/`domain`. Detalhe completo em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Every job source (`JobSource`) and every application method (`JobApplier`) is a pluggable strategy resolved through a registry — a new platform lands in `infra/` without touching `application`/`domain`. Details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); decisions in [docs/adr/](docs/adr/README.md).
 
-## Desenvolvimento
+## Development
 
 ```bash
 pip install -e ".[dev]"
-pytest
+make check     # ruff + ruff format --check + mypy + pytest (same gate as CI)
 ```
 
-Testes seguem padrão **AAA** (Arrange/Act/Assert, comentado no código). Todo código novo em `domain/`, `application/`, `infra/` precisa de teste antes de merge. Detalhes em [docs/TESTING.md](docs/TESTING.md).
+Tests follow the **AAA** pattern (Arrange/Act/Assert, spelled out in comments). Every new piece of code in `domain/`, `application/` or `infra/` needs a test before merge. See [docs/TESTING.md](docs/TESTING.md), [docs/CODE_STANDARDS.md](docs/CODE_STANDARDS.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Padrões de código (SOLID, regra de dependência, estilo) em [docs/CODE_STANDARDS.md](docs/CODE_STANDARDS.md). Fluxo de contribuição em [CONTRIBUTING.md](CONTRIBUTING.md).
+## Responsible use
+
+This is job application automation. Whoever runs it is responsible for how it is used:
+
+- **Terms of Service.** Job platforms (LinkedIn, Gupy, Indeed and others) restrict or forbid automated collection and account automation. This project ships no scraper for any platform; every new source must be checked against the site's ToS before being implemented and used.
+- **No bulk blasting.** The tool is meant for personal applications, one at a time. Do not use it for mass sending — it is bad for the people receiving it and may qualify as spam.
+- **Truthful data.** The resume and profile you send must be yours and accurate.
+- **Personal data.** Your resume, history and credentials stay on your machine, in gitignored files. The project sends nothing to any third-party service.
+- **Human review.** Automation sends exactly what you configured; check the email body and the recipient before applying in batch.
+
+The project is provided "as is", without warranty, under the [MIT license](LICENSE).
 
 ## Roadmap
 
-Ver [docs/FEATURES.md](docs/FEATURES.md) — fase 1 (base fixa) e fase 2+ (novas plataformas, form appliers, camada de IA). Histórico de mudanças em [CHANGELOG.md](CHANGELOG.md).
+Current and planned deliverables in [docs/FEATURES.md](docs/FEATURES.md). Sprint in progress in [docs/sprints/SPRINT-01-MVP.md](docs/sprints/SPRINT-01-MVP.md). History in [CHANGELOG.md](CHANGELOG.md).
 
-## Licença
+## License
 
 [MIT](LICENSE)

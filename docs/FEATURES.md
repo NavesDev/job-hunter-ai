@@ -1,33 +1,45 @@
-# Features e Planejamento
+# Features and planning
 
-## Base fixa (Fase 1 — MVP)
+Every item is a **deliverable**: something the user gains the ability to do. Classes, ports and modules are implementation detail — they live in [ARCHITECTURE.md](ARCHITECTURE.md), not here.
 
-Estrutural, não muda por plataforma. Detalhes em [ARCHITECTURE.md](ARCHITECTURE.md).
+## Sprint 01 — MVP (in progress)
 
-- [ ] `list-jobs` — lista vagas de uma fonte (`--source`, `--max-length`, filtros), grava no SQLite, imprime JSON.
-- [ ] `apply-job` — aplica numa vaga já listada, via `--method email` (flags `--email`, `--subject`) ou `--method form` (quando houver applier da plataforma). Corpo do email e PDF de currículo sempre fixos.
-- [ ] `ManualJsonJobSource` — fonte de entrada manual (JSON/CSV colado/importado), única fonte da fase 1.
-- [ ] `EmailApplier` genérico — SMTP configurável, template HTML versionado + currículo PDF fixo (local, gitignored).
-- [ ] `SqliteJobRepository` — estado/histórico: vagas coletadas (dedup) e resultados de aplicação.
-- [ ] Config local não versionada (`config/local/`), com template de exemplo versionado (`config.example.yaml`).
-- [ ] Suíte de testes AAA (`pytest`) cobrindo `domain/`, `application/`, `infra/`, CLI.
-- [ ] README com instalação, flags de cada comando e exemplos de uso por agente externo.
+Detail, acceptance criteria and ordering in [docs/sprints/SPRINT-01-MVP.md](sprints/SPRINT-01-MVP.md).
 
-## Planejado (Fase 2+)
+- [ ] **List jobs from a hand-made list** — I point at a JSON file and get normalized jobs back as JSON, stored locally with stable ids and no duplicates across runs.
+- [ ] **Apply to a job by email** — I pick a listed job and send my application with my own HTML body and my resume attached as a PDF; the outcome lands in the local history.
 
-Cada item é incremental — não bloqueia a fase 1, entra plugando na mesma estrutura de ports/registry.
+## Foundation (done)
 
-### Novas fontes de vaga (`JobSource`)
-- Scraper por plataforma (ex.: LinkedIn, Gupy, Indeed) — cada um novo em `infra/sources/`, registrado por nome.
-- Diferentes formatos de entrada de dados por site (cada plataforma lista/exporta vaga do seu jeito).
+- [x] **Install and run the project** — `pip install -e .` exposes `list-jobs` and `apply-job`; example configuration is versioned.
+- [x] **A stable contract for agents** — JSON output, structured errors and exit codes documented in [CONTRACT.md](CONTRACT.md) and verified by tests.
+- [x] **Secrets separated from configuration** — credentials only in `.env`, settings in the local YAML, both kept out of version control.
+- [x] **Automated quality gate** — `make check` and CI run lint, formatting, types and tests on every PR.
 
-### Novos meios de aplicação (`JobApplier`)
-- Form applier por plataforma (`infra/appliers/<plataforma>_form_applier.py`) — obrigatório para toda plataforma que só aceita formulário. Usa `config/local/sources/<plataforma>.yaml` (credenciais/config própria) + `CandidateProfile.extra_fields` (telefone, LinkedIn, portfólio) pra preencher campos.
+## Next deliverables (prioritized backlog)
 
-### Camada de decisão/extração de IA (avaliar se formaliza no projeto)
-- Hoje: agente externo decide "aplica ou não" e extrai dado não-estruturado (email/assunto da descrição) por fora, chamando os scripts com o resultado via flag.
-- Possível evolução: formalizar como camada própria (`ai/`) com `enrich-job` (extrai `apply_email`/`apply_methods`/`email_subject` da descrição) e `decide-job` (compara vaga x currículo, gera score/motivo) — reavaliar quando/se fizer sentido internalizar.
+Each one plugs into the existing structure and blocks none of the others.
 
-### Outros
-- Múltiplos currículos selecionáveis por vaga (perfil backend vs frontend, etc.) — fase 1 usa 1 currículo fixo.
-- Cobertura mínima de teste obrigatória em CI (definir número/gate).
+### Short term
+
+- [ ] **Import jobs from CSV** — I paste a platform's export without converting it to JSON first.
+- [ ] **See what I already applied to** — I query the local application history per job, with status and date.
+- [ ] **Apply in batch** — `--all-ready` fires applications for every ready job, skipping the ones already sent.
+- [ ] **Choose between several resumes** — I select a profile (backend, frontend...) when applying; today the resume is single and fixed.
+
+### Medium term
+
+- [ ] **Collect jobs straight from a platform** — one source per site (LinkedIn, Gupy, Indeed) brings jobs in without a manual export. Before implementing any of them: check the platform's Terms of Service (see [Responsible use](../README.md#responsible-use)).
+- [ ] **Apply on sites that only accept a form** — automatic filling of the platform's form with the profile data, for sites with no contact address.
+- [ ] **Resume from a failure without resending** — controlled send retries that cannot deliver the same application twice.
+
+### Under evaluation
+
+- [ ] **Extract the address and subject from the job description** — today the external agent does this and passes the result as flags. It only becomes a command (`enrich-job`) if owning the extraction is worth the maintenance cost.
+- [ ] **Decide automatically whether to apply** — job × resume comparison with a score and a rationale (`decide-job`). Same evaluation: for now it belongs to the external orchestrator.
+
+## Assumed limits
+
+- Local, single-user use. No server, no multi-account, no queue.
+- The "apply or not" decision belongs to the orchestrating agent, not to this project.
+- No minimum test coverage gate in CI yet — the number gets defined once there is enough code to measure.

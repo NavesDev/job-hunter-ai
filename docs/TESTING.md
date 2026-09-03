@@ -1,12 +1,12 @@
-# Padrões de teste
+# Testing standards
 
 ## Framework
 
-`pytest`. Sem framework de mock externo além do `unittest.mock` da stdlib, salvo necessidade real.
+`pytest`. No external mocking library beyond the stdlib `unittest.mock`, unless there is a real need.
 
-## Padrão AAA obrigatório
+## The AAA pattern is mandatory
 
-Todo teste comentado em 3 blocos, sempre nessa ordem, sempre esses comentários:
+Every test is split into 3 commented blocks, always in this order, always with these comments:
 
 ```python
 def test_apply_job_should_return_skipped_when_no_applier_registered():
@@ -21,31 +21,31 @@ def test_apply_job_should_return_skipped_when_no_applier_registered():
     assert result.status == "skipped"
 ```
 
-Um `Arrange`/`Act`/`Assert` por teste. Teste que precisa de mais de um `Act` geralmente devia ser dois testes.
+One `Arrange`/`Act`/`Assert` per test. A test that needs more than one `Act` should usually be two tests.
 
-## Estrutura
+## Layout
 
 ```
 tests/
-├── unit/           domain/ e application/, ports mockados/fake, sem I/O real
-├── integration/    infra/ com dependência real (SQLite em arquivo temp, SMTP fake local)
-└── cli/            comandos via Typer CliRunner, valida stdout/stderr/exit code contra o CONTRACT.md
+├── unit/           domain/ and application/, mocked or faked ports, no real I/O
+├── integration/    infra/ against real dependencies (SQLite in a temp file, local fake SMTP)
+└── cli/            commands through Typer's CliRunner, checking stdout/stderr/exit code against CONTRACT.md
 ```
 
-- **unit**: rápido, roda sempre. Usa fake/mock de `JobSource`, `JobApplier`, `JobRepository` (implementações simples em `tests/fakes/`, não `Mock()` genérico quando o comportamento importa).
-- **integration**: valida que a implementação concreta (`SqliteJobRepository`, `EmailApplier`) cumpre o contrato do port. Usa banco/SMTP real, mas local/efêmero — nunca rede externa de verdade.
-- **cli**: garante que o JSON de saída bate com o [contrato](CONTRACT.md) — campo, tipo, exit code.
+- **unit**: fast, always runs. Uses fakes or mocks of `JobSource`, `JobApplier`, `JobRepository` (simple implementations in `tests/fakes/`, not a generic `Mock()` when behavior matters).
+- **integration**: proves that a concrete implementation (`SqliteJobRepository`, `EmailApplier`) honors its port's contract. Uses a real database and SMTP server, but local and ephemeral — never a real external network.
+- **cli**: guarantees that the output JSON matches the [contract](CONTRACT.md) — fields, types, exit codes.
 
-## Regra de cobertura
+## Coverage rule
 
-Todo código novo em `domain/`, `application/`, `infra/` exige teste no mesmo PR — sem teste, sem merge. `cli/` (parsing puro) pode ter cobertura menor, mas o caminho feliz de cada comando precisa de ao menos um teste em `tests/cli/`.
+Every new piece of code in `domain/`, `application/` or `infra/` requires a test in the same PR — no test, no merge. `cli/` (pure parsing) may have lighter coverage, but each command's happy path needs at least one test in `tests/cli/`.
 
-## Nomeação
+## Naming
 
-`test_<unidade>_should_<comportamento_esperado>_when_<condição>` — nome do teste é a especificação, deve dar pra entender o que quebrou só lendo o nome no CI, sem abrir o arquivo.
+`test_<unit>_should_<expected_behavior>_when_<condition>` — the test name is the specification, and should make the failure understandable from the CI output alone, without opening the file.
 
-Exemplo: `test_apply_job_should_return_skipped_when_no_applier_registered`.
+Example: `test_apply_job_should_return_skipped_when_no_applier_registered`.
 
-## Fakes vs Mocks
+## Fakes vs mocks
 
-Prefira **fake** (implementação simples e real de um port, em memória) a **mock** (`Mock()`/`MagicMock`) quando o teste depende de comportamento, não só de "foi chamado com X". Mock é aceitável pra verificar interação (ex.: "SMTP foi chamado com esses parâmetros"), fake é melhor pra testar fluxo (ex.: "job aplicado duas vezes não duplica no repository").
+Prefer a **fake** (a simple, real in-memory implementation of a port) over a **mock** (`Mock()`/`MagicMock`) when the test depends on behavior rather than on "was called with X". A mock is fine for verifying an interaction ("SMTP was called with these parameters"); a fake is better for testing a flow ("applying twice does not duplicate the job in the repository").

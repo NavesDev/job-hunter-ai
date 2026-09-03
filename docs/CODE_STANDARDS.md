@@ -1,13 +1,15 @@
-# Padrões de código
+# Code standards
 
-## Estilo
+## Style
 
-- **PEP 8**, aplicado via `ruff` (lint + format). Sem discussão de estilo em PR — se o linter aceita, tá aceito.
-- **Type hints obrigatórios** em toda função/método público. `mypy` (ou `pyright`) roda no CI.
-- Nome de arquivo/módulo: `snake_case`. Classe: `PascalCase`. Função/variável: `snake_case`. Constante: `UPPER_SNAKE_CASE`.
-- Docstring só onde o nome da função não deixa óbvio o "porquê" (não descreva o "o quê" que o type hint já mostra).
+- **PEP 8**, enforced by `ruff` (lint + format, configured in `pyproject.toml`, 100-column lines). No style debates in a PR — if the linter accepts it, it is accepted.
+- **Type hints are mandatory** on every public function and method. `mypy` runs in `strict` mode in CI.
+- `make check` runs the whole gate (lint + format + types + tests) — the same thing CI executes.
+- File/module names: `snake_case`. Classes: `PascalCase`. Functions and variables: `snake_case`. Constants: `UPPER_SNAKE_CASE`.
+- Docstrings only where the name does not make the *why* obvious (do not restate the *what* that the type hints already show).
+- Code, comments, docstrings and documentation are written in English.
 
-## Arquitetura (regra de dependência)
+## Architecture (dependency rule)
 
 ```
 cli/  →  application/  →  domain/
@@ -15,32 +17,34 @@ cli/  →  application/  →  domain/
                            infra/
 ```
 
-- `domain/` nunca importa de `application/`, `infra/` ou `cli/`. Zero dependência externa (nem Pydantic, se possível — `dataclass` puro).
-- `application/` só depende de `domain/` (ports). Nunca importa classe concreta de `infra/` diretamente — sempre recebe via injeção no construtor.
-- `infra/` implementa `domain/ports`. Pode depender de bibliotecas externas (SQLite, SMTP, Playwright).
-- `cli/` é o único lugar que sabe montar o grafo de dependência concreta (registry/factory) e instanciar use cases.
+- `domain/` never imports from `application/`, `infra/` or `cli/`. Zero external dependencies (not even Pydantic, if avoidable — plain `dataclass`).
+- `application/` depends on `domain/` (ports) only. It never imports a concrete class from `infra/` — those always arrive through constructor injection.
+- `infra/` implements `domain/ports`. It may depend on external libraries (SQLite, SMTP, Playwright).
+- `cli/` is the only place that knows how to assemble the concrete dependency graph (registry/factory) and instantiate use cases.
 
-Violação comum a evitar: use case importando `infra.appliers.email_applier` direto em vez de receber `JobApplier` no construtor — quebra testabilidade e Dependency Inversion.
+The layers live under the single `src/job_hunter_ai/` package ([ADR-0004](adr/0004-single-package.md)); imports are always absolute and explicit (`from job_hunter_ai.domain.ports import JobSource`).
 
-## SOLID — checklist rápido ao abrir PR
+Common violation to avoid: a use case importing `job_hunter_ai.infra.appliers.email_applier` directly instead of receiving a `JobApplier` in its constructor — that breaks testability and Dependency Inversion.
 
-- **S**: a classe faz uma coisa só? Se o nome tem "e"/"ou" (`SourceAndApplier`), provavelmente não.
-- **O**: nova plataforma/fonte é extensão (nova classe + registro), não edição de código existente?
-- **L**: toda implementação de `JobSource`/`JobApplier` pode substituir outra sem quebrar quem chama?
-- **I**: port não força implementação a ter método que não faz sentido pra ela?
-- **D**: `application/` depende de `Protocol`, nunca de classe concreta de `infra/`?
+## SOLID — quick PR checklist
 
-## Tamanho de arquivo/unidade
+- **S**: does the class do exactly one thing? If its name contains "and"/"or" (`SourceAndApplier`), probably not.
+- **O**: is a new platform/source an extension (new class plus registration) rather than an edit of existing code?
+- **L**: can any `JobSource`/`JobApplier` implementation replace another without breaking its callers?
+- **I**: does the port avoid forcing an implementation to provide a method that makes no sense for it?
+- **D**: does `application/` depend on a `Protocol` rather than a concrete `infra/` class?
 
-Arquivo crescendo demais (~200-300 linhas pra módulo comum) é sinal de responsabilidade misturada — quebrar antes de continuar empilhando. Prefira muitos arquivos pequenos e coesos a poucos grandes (mesmo princípio já usado em `domain/entities/` e `domain/ports/`, um arquivo por conceito).
+## File and unit size
+
+A file growing too large (~200-300 lines for an ordinary module) signals mixed responsibilities — split it before piling on more. Prefer many small, cohesive files over a few big ones (the same principle already applied in `domain/entities/` and `domain/ports/`, one file per concept).
 
 ## Commits
 
-Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`). Corpo explica o "porquê" quando não for óbvio pelo diff.
+Conventional Commits **with a mandatory layer scope**: `feat(infra): ...`, `fix(cli): ...`, `test(application): ...`. The list of valid scopes and the branch pattern (`type/issue-id-description`) are in [CONTRIBUTING.md](../CONTRIBUTING.md#commits). The body explains the *why* whenever the diff does not make it obvious.
 
-## O que não fazer
+## What not to do
 
-- Sem `print()`/log solto em `stdout` de comando CLI — quebra o [contrato](CONTRACT.md).
-- Sem exceção genérica (`except Exception`) engolindo erro sem log/re-raise tipado.
-- Sem lógica de negócio em `cli/` — CLI só faz parse de flag, resolve dependência, chama use case, formata saída.
-- Sem acesso a arquivo/rede direto em `domain/` ou `application/`.
+- No stray `print()`/log on a CLI command's `stdout` — it breaks the [contract](CONTRACT.md).
+- No blanket exception (`except Exception`) swallowing an error without logging or re-raising it typed.
+- No business logic in `cli/` — the CLI only parses flags, resolves dependencies, calls the use case and formats the output.
+- No direct file or network access in `domain/` or `application/`.
