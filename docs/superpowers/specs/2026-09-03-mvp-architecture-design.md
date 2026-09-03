@@ -20,7 +20,7 @@ Scripts são **puros e determinísticos**. Nenhuma IA embutida no MVP. A decisã
 
 ## Stack
 
-- **Python** — libs maduras de email (stdlib), CLI (Typer), validação (Pydantic), testes (pytest), scraping/form-fill futuro (Playwright).
+- **Python** — libs maduras de email (stdlib), CLI (Typer), validação (Pydantic), credenciais (python-dotenv), testes (pytest), scraping/form-fill futuro (Playwright).
 - **SQLite** — estado/histórico (vagas coletadas, resultados de aplicação). Evita duplicata e re-aplicação.
 - **Config local não versionada** — cada usuário configura credenciais e dados pessoais por fora do git.
 
@@ -63,7 +63,9 @@ job-hunter-ai/
 │       ├── email-body.html         # versão real do usuário
 │       ├── resume.pdf
 │       └── sources/
-│           └── <plataforma>.yaml   # config específica por source, quando houver
+│           └── <plataforma>.yaml   # config específica por source (não-sensível), quando houver
+├── .env.example                    # versionado — credenciais/segredos, exemplo
+├── .env                            # gitignored — credenciais reais (SMTP, login por plataforma)
 ├── tests/
 │   ├── unit/
 │   ├── integration/
@@ -159,11 +161,17 @@ Cada comando imprime JSON no stdout (sucesso) ou stderr (erro estruturado, `{"er
 - **PDF**: `config/local/resume.pdf` (caminho configurável via `config.yaml` → `resume_pdf_path`), gitignored — dado pessoal.
 - **Assunto**: vem via flag `--subject` de quem chama `apply-job` (fase 1); se omitido, usa `default_subject_template` da config local.
 
-## Config por source
+## Config vs credenciais
 
-- `config/local/config.yaml`: geral, vira `CandidateProfile` — reusável por qualquer applier.
-- `config/local/sources/<nome>.yaml`: schema próprio por plataforma (login, cookies, mapeamento de campo), carregado só pelo `infra/appliers/<nome>_form_applier.py` correspondente — domain fica agnóstico de plataforma.
+Separação explícita entre configuração (não-sensível) e credenciais (segredo) — nunca no mesmo arquivo:
+
+- `config/local/config.yaml`: configuração geral não-sensível (nome, `resume_pdf_path`, `default_subject_template`, `preferred_apply_order`, `extra_fields`) — vira `CandidateProfile`, reusável por qualquer applier.
+- `.env` (raiz, gitignored): credenciais/segredos — SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_USE_TLS`) e login por plataforma (`LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD`, ...), carregado via `python-dotenv`. Popula `SmtpConfig` e credenciais dos form appliers.
+- `.env.example`: versionado, lista as chaves esperadas sem valor real.
+- `config/local/sources/<nome>.yaml`: config não-sensível específica por plataforma (seletor, timeout, mapeamento de campo), carregado só pelo `infra/appliers/<nome>_form_applier.py` correspondente — domain fica agnóstico de plataforma. Credencial daquela plataforma fica no `.env`, não aqui.
 - `config/config.example.yaml`: versionado, template de config sem dado real.
+
+`config/loader.py` combina `.env` + `config.yaml` num único `CandidateProfile`.
 
 ## Erros
 

@@ -19,12 +19,14 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e .
 cp config/config.example.yaml config/local/config.yaml
 cp config/templates/email-body.example.html config/local/email-body.html
-# edite config/local/config.yaml com seus dados (SMTP, currículo, nome)
+cp .env.example .env
+# edite config/local/config.yaml com configuração não-sensível (nome, currículo, preferências)
+# edite .env com credenciais (SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD, ...)
 # personalize config/local/email-body.html (HTML livre, com seu estilo)
 # coloque seu currículo em config/local/resume.pdf (ou aponte outro caminho no config.yaml)
 ```
 
-`config/local/` é gitignored — cada usuário configura suas próprias credenciais, nunca versionadas.
+`config/local/` e `.env` são gitignored. Configuração não-sensível (nome, caminhos, preferências) vai em `config/local/config.yaml`; credenciais/segredos (SMTP, login por plataforma) vão em `.env` — nunca no YAML, nunca versionados.
 
 ## Uso
 

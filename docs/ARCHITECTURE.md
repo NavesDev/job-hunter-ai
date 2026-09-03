@@ -41,8 +41,11 @@ src/
 
 config/
 ├── templates/email-body.example.html   versionado (exemplo)
-├── config.example.yaml                 versionado (exemplo)
+├── config.example.yaml                 versionado (exemplo) — configuração não-sensível
 └── local/                              gitignored: config.yaml, email-body.html, resume.pdf, sources/<plataforma>.yaml
+
+.env.example                            versionado (exemplo) — credenciais/segredos
+.env                                    gitignored — credenciais reais (SMTP, login por plataforma)
 
 tests/
 ├── unit/         use cases com ports mockados
@@ -58,6 +61,15 @@ tests/
 | `JobApplier` | `(method, source)` | `"email" → "*"` (genérico) | `"form" → <plataforma>` obrigatório por site |
 
 Sem applier registrado para `(method, source)`, `apply-job` retorna `status="skipped"` — nunca falha silenciosa nem trava o fluxo.
+
+## Config vs credenciais
+
+Duas coisas distintas, dois lugares distintos:
+
+- **Configuração** (não-sensível: caminhos, template default, ordem de preferência de método): `config/local/config.yaml`, carregado por `config/loader.py`.
+- **Credenciais** (segredo: usuário/senha SMTP, login/token por plataforma): `.env` na raiz, carregado via `python-dotenv`. Nunca versionado, nunca em YAML.
+
+`config/loader.py` lê os dois e monta `CandidateProfile`/`SmtpConfig` combinando ambos. Credencial de plataforma específica usa prefixo por fonte (`LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD`) no mesmo `.env` — `config/local/sources/<plataforma>.yaml` fica só pra configuração não-sensível daquela plataforma (seletor, timeout), se precisar.
 
 ## Contratos principais
 
