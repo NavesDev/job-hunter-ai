@@ -1,0 +1,25 @@
+# NON-SENSITIVE configuration for job-hunter-ai.
+# Copy to config/local/config.yaml and adjust. Credentials do NOT belong here — they go in .env.
+
+candidate:
+  # Name used as the sender and in the email template placeholders.
+  name: "Your Name"
+  # Contact address shown in the email body (not an SMTP credential).
+  contact_email: "you@example.com"
+  # Extra fields reused by form appliers (phase 2). Free-form keys.
+  extra_fields:
+    phone: "+1 555 000 0000"
+    linkedin: "https://linkedin.com/in/you"
+    portfolio: ""
+
+application:
+  # Resume attached to the application. Path relative to the repository root.
+  resume_path: "config/local/resume.pdf"
+  # Email body. Falls back to the versioned example template when this file is missing.
+  email_body_path: "config/local/email-body.html"
+  # Default subject used when --subject is not passed.
+  default_subject: "Application - {title} - Your Name"
+
+storage:
+  # Local SQLite database holding collected jobs and application history.
+  database_path: "config/local/jobs.db"
