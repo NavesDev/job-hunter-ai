@@ -12,12 +12,16 @@ from typing import Any
 
 import yaml
 
+from job_hunter_ai.domain.entities.candidate_profile import CandidateProfile
 from job_hunter_ai.domain.errors import InvalidInputError
 
 CONFIG_PATH_ENV = "JOB_HUNTER_AI_CONFIG"
 LOCAL_CONFIG = Path("config/local/config.yaml")
 EXAMPLE_CONFIG = Path("config/config.example.yaml")
 DEFAULT_DATABASE_PATH = Path("config/local/jobs.db")
+DEFAULT_RESUME_PATH = Path("config/local/resume.pdf")
+DEFAULT_EMAIL_BODY_PATH = Path("config/local/email-body.html")
+DEFAULT_SUBJECT = "Application - {title}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +32,7 @@ class StorageConfig:
 @dataclass(frozen=True, slots=True)
 class AppConfig:
     storage: StorageConfig
+    candidate: CandidateProfile
 
 
 def load_config(root: Path | None = None) -> AppConfig:
@@ -35,7 +40,7 @@ def load_config(root: Path | None = None) -> AppConfig:
     base = root or Path.cwd()
     path = resolve_config_path(base)
     raw = _read_yaml(path)
-    return AppConfig(storage=_storage_from(raw, base))
+    return AppConfig(storage=_storage_from(raw, base), candidate=_candidate_from(raw, base))
 
 
 def resolve_config_path(base: Path) -> Path:
@@ -62,11 +67,34 @@ def _read_yaml(path: Path) -> dict[str, Any]:
 
 
 def _storage_from(raw: dict[str, Any], base: Path) -> StorageConfig:
-    section = raw.get("storage") or {}
+    section = _mapping(raw, "storage")
+    return StorageConfig(
+        database_path=_resolve(base, section.get("database_path"), DEFAULT_DATABASE_PATH)
+    )
+
+
+def _candidate_from(raw: dict[str, Any], base: Path) -> CandidateProfile:
+    candidate = _mapping(raw, "candidate")
+    application = _mapping(raw, "application")
+    return CandidateProfile(
+        name=str(candidate.get("name") or ""),
+        contact_email=str(candidate.get("contact_email") or ""),
+        resume_path=_resolve(base, application.get("resume_path"), DEFAULT_RESUME_PATH),
+        email_body_path=_resolve(base, application.get("email_body_path"), DEFAULT_EMAIL_BODY_PATH),
+        default_subject=str(application.get("default_subject") or DEFAULT_SUBJECT),
+        extra_fields={
+            key: str(value) for key, value in _mapping(candidate, "extra_fields").items()
+        },
+    )
+
+
+def _mapping(raw: dict[str, Any], key: str) -> dict[str, Any]:
+    section = raw.get(key) or {}
     if not isinstance(section, dict):
-        raise InvalidInputError("`storage` must be a mapping")
-    configured = section.get("database_path") or DEFAULT_DATABASE_PATH
-    database_path = Path(configured)
-    if not database_path.is_absolute():
-        database_path = base / database_path
-    return StorageConfig(database_path=database_path)
+        raise InvalidInputError(f"`{key}` must be a mapping")
+    return section
+
+
+def _resolve(base: Path, configured: Any, default: Path) -> Path:
+    path = Path(str(configured)) if configured else default
+    return path if path.is_absolute() else base / path

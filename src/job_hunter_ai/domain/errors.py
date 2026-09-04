@@ -25,9 +25,3 @@ class SmtpError(JobHunterError):
 
 class InvalidInputError(JobHunterError):
     code = "INVALID_INPUT"
-
-
-class NotImplementedYetError(JobHunterError):
-    """Temporary: the command is declared but not delivered yet. Removed in Sprint 01."""
-
-    code = "NOT_IMPLEMENTED"
