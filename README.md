@@ -13,7 +13,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) · [Features](docs/FEATURES.md) · [C
 
 ## Status
 
-🚧 **Pre-alpha.** `list-jobs` works end to end with the `manual` source: it normalizes a JSON file, stores the jobs in SQLite and prints the contract payload. `apply-job` still answers `NOT_IMPLEMENTED` — it is the remaining half of [Sprint 01](docs/sprints/SPRINT-01-MVP.md).
+🚧 **Alpha.** The MVP works end to end: `list-jobs` normalizes a JSON file into the local database, and `apply-job` emails the application with the resume attached, recording every attempt. Still to come: platform scrapers, form applications and batch mode — see [FEATURES.md](docs/FEATURES.md).
 
 ## Requirements
 
@@ -66,9 +66,8 @@ Output: JSON on stdout, a list of normalized jobs (`id`, `source`, `title`, `com
 ### Apply to a job
 
 ```bash
-apply-job --job-id abc123 --method email --email jobs@company.com --subject "Backend role - Your Name"
-apply-job --job-id abc123 --method form
-apply-job --all-ready --method email
+apply-job --job-id manual:d4979b84f109 --method email --email jobs@company.com --subject "Backend role - Your Name"
+apply-job --job-id manual:d4979b84f109 --method form
 ```
 
 | Flag | Required | Description |
@@ -77,7 +76,7 @@ apply-job --all-ready --method email
 | `--method` | yes | `email` or `form` |
 | `--email` | if `method=email` and the job carries no email | Destination address |
 | `--subject` | no | Email subject; falls back to the configured default |
-| `--all-ready` | no | Applies in batch to every job already collected |
+| `--all-ready` | not yet | Batch mode; rejected with `INVALID_INPUT` until it is delivered |
 
 The email body (`config/local/email-body.html`, falling back to `config/templates/email-body.example.html`) and the resume PDF (`config/local/resume.pdf`) are always fixed — only the method, the address and the subject vary per call. `--method form` needs an applier registered for the job's platform; without one it returns `status=skipped` instead of blocking the rest of the flow.
 
@@ -90,6 +89,27 @@ Every command prints structured JSON. Success goes to stdout; failures go to std
 ```
 
 This lets an external agent (AI or human) parse the result without depending on stack traces. Full contract in [docs/CONTRACT.md](docs/CONTRACT.md).
+
+### Trying it without sending a real email
+
+[MailDev](https://github.com/maildev/maildev) is a local SMTP server with a web inbox — nothing leaves the machine:
+
+```bash
+npm install            # once; installs maildev as a dev dependency
+make maildev           # SMTP on :1025, inbox at http://localhost:1080
+```
+
+Point `.env` at it and apply as usual:
+
+```bash
+SMTP_HOST=127.0.0.1
+SMTP_PORT=1025
+SMTP_USERNAME=you@example.com
+SMTP_PASSWORD=anything
+SMTP_USE_TLS=false
+```
+
+The application shows up in the inbox with the HTML body and the attached PDF. The automated tests do not need it: they run their own in-process fake SMTP server.
 
 ## Architecture at a glance
 

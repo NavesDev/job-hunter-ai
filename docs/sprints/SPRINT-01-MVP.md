@@ -1,6 +1,6 @@
 # Sprint 01 — MVP: list jobs and apply by email
 
-- **Status:** in progress — TASK-01 delivered, TASK-02 pending
+- **Status:** done — both tasks delivered, released as v0.1.0
 - **Start:** 2026-09-03
 - **Sprint goal:** starting from a hand-made list of jobs, I can list them through the CLI and email my application to one of them, without editing any code.
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "job-hunter-ai"
-version = "0.0.1"
+version = "0.1.0"
 description = "Deterministic CLI scripts to list jobs and apply to them, orchestrated by external AI agents."
 readme = "README.md"
 license = { file = "LICENSE" }
