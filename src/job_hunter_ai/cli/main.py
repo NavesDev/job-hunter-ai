@@ -1,7 +1,7 @@
 """CLI entrypoints: `list-jobs` and `apply-job`.
 
-Sprint 01 skeleton: the commands exist and declare the flag contract from
-docs/CONTRACT.md, failing with `NOT_IMPLEMENTED` until each task is delivered.
+The commands only parse flags, assemble the concrete dependency graph and format
+the output — every rule lives in `application/`, `domain/` and `infra/`.
 """
 
 from pathlib import Path
@@ -9,23 +9,33 @@ from typing import Annotated
 
 import typer
 
-from job_hunter_ai.cli.output import emit_error
+from job_hunter_ai.application.list_jobs import DEFAULT_MAX_LENGTH, ListJobsUseCase
+from job_hunter_ai.cli.output import contract_command, emit_error, emit_success
+from job_hunter_ai.cli.serializers import job_to_payload
+from job_hunter_ai.config.loader import load_config
 from job_hunter_ai.domain.errors import NotImplementedYetError
+from job_hunter_ai.infra.repository.sqlite_job_repository import SqliteJobRepository
+from job_hunter_ai.infra.sources.registry import SourceRegistry
 
 list_jobs_app = typer.Typer(add_completion=False, help="List jobs from a registered source.")
 apply_job_app = typer.Typer(add_completion=False, help="Apply to an already listed job.")
 
 
 @list_jobs_app.command()
+@contract_command
 def list_jobs(
     source: Annotated[str, typer.Option("--source", help="Registered job source.")],
     file: Annotated[Path | None, typer.Option("--file", help="Input file (manual source).")] = None,
     max_length: Annotated[
         int, typer.Option("--max-length", help="Maximum number of jobs returned.")
-    ] = 50,
+    ] = DEFAULT_MAX_LENGTH,
 ) -> None:
     """List normalized jobs from a source and print them as JSON on stdout."""
-    emit_error(NotImplementedYetError("list-jobs is not implemented yet (Sprint 01, TASK-01)"))
+    config = load_config()
+    job_source = SourceRegistry().get(source)
+    with SqliteJobRepository(config.storage.database_path) as repository:
+        jobs = ListJobsUseCase(job_source, repository).execute(max_length=max_length, file=file)
+    emit_success([job_to_payload(job) for job in jobs])
 
 
 @apply_job_app.command()
