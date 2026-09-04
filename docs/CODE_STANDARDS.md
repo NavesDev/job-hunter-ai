@@ -45,6 +45,67 @@ Run it locally with `make layers` (or `lint-imports`); `make check` already incl
 - **I**: does the port avoid forcing an implementation to provide a method that makes no sense for it?
 - **D**: does `application/` depend on a `Protocol` rather than a concrete `infra/` class?
 
+## Design patterns in use
+
+Every pattern below exists to remove a concrete conditional or a concrete coupling. Adding one "for flexibility", with no second implementation in sight, is a defect — not foresight.
+
+| Pattern | Where | What it buys |
+|---|---|---|
+| Ports & Adapters | `domain/ports` + `infra/` | swapping SQLite or SMTP without touching a use case |
+| Registry + Factory | `infra/sources/registry.py` | resolving `--source` by name; a new platform is a new entry, not an edit |
+| Strategy | `JobSource`, `JobApplier` | one interchangeable implementation per platform |
+| Repository | `JobRepository` | persistence details never leak into `application/` |
+| Dependency Injection | use case constructors | `cli/` is the single composition root |
+| Decorator | `cli/output.contract_command` | one place turns a typed error into the CLI contract |
+
+## Fail-fast
+
+Validate at the boundary and raise immediately, with the offending value in the message.
+
+- A missing `--file`, an unparseable JSON, a `--max-length` of `0`, a config with no `storage` mapping: all raise where they are read.
+- Never propagate a `None`, an empty default or a silently truncated value into the next layer.
+- Never let an invalid input reach the database or the SMTP server — an external side effect is the last place to discover a bad argument.
+- A precondition that can only be broken by a bug (a `Job` with no natural key) raises `ValueError` from `domain/`, not a contract error: it is not a runtime condition the calling agent can fix.
+
+## Exceptions per layer
+
+Each layer raises what it owns, and never leaks a lower layer's exception type upwards:
+
+```
+infra/         catches sqlite3 / json / yaml / smtplib errors → raises a typed JobHunterError
+application/   raises JobHunterError for rule violations (InvalidInputError, ...)
+domain/        raises ValueError for programming errors that must never happen at runtime
+cli/           catches JobHunterError → error JSON on stderr + non-zero exit (contract_command)
+```
+
+Rules:
+
+- Every typed error carries the `code` documented in [CONTRACT.md](CONTRACT.md#errors-any-command). A new code is documented there **before** it is raised.
+- Always chain the cause when re-raising: `raise InvalidInputError(...) from exc`.
+- `cli/output.contract_command` is the only boundary that converts an exception into an exit code — a command body never formats an error itself.
+- No stack trace ever reaches stdout or the calling agent.
+
+## EAFP — better to ask forgiveness than permission
+
+Prefer `try/except` over a pre-check that just duplicates the operation's own check:
+
+```python
+# Yes — one lookup, the failure path carries the message
+try:
+    factory = self._factories[name]
+except KeyError as exc:
+    raise SourceNotFoundError(f"unknown source `{name}`") from exc
+
+# No — two lookups, and a race between the check and the use
+if name in self._factories:
+    factory = self._factories[name]
+```
+
+Two cases where looking before you leap is the right call:
+
+1. The guard produces a **better message** than the built-in exception would (`f"input file not found: {path}"` beats a raw `FileNotFoundError`).
+2. The operation has an **irreversible side effect** (sending an email, writing to the database). There, validate first — an exception after the fact does not un-send anything.
+
 ## File and unit size
 
 A file growing too large (~200-300 lines for an ordinary module) signals mixed responsibilities — split it before piling on more. Prefer many small, cohesive files over a few big ones (the same principle already applied in `domain/entities/` and `domain/ports/`, one file per concept).

@@ -12,6 +12,8 @@ Read, in this order:
 4. [docs/CONTRACT.md](docs/CONTRACT.md) — if the change touches the CLI (flag, output field, exit code).
 5. [docs/DATA_MODEL.md](docs/DATA_MODEL.md) — if the change touches the database, job ids or history.
 
+[CLAUDE.md](CLAUDE.md) is the condensed version of all of it, aimed at AI agents working in the repository — the engineering principles the project enforces (SOLID, the patterns in use, fail-fast, exceptions per layer, EAFP) live there and in [CODE_STANDARDS.md](docs/CODE_STANDARDS.md).
+
 ## Environment
 
 ```bash
