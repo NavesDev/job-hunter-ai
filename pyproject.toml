@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "job-hunter-ai"
-version = "0.1.0"
+version = "0.0.1"
 description = "Deterministic CLI scripts to list jobs and apply to them, orchestrated by external AI agents."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -49,7 +49,7 @@ apply-job = "job_hunter_ai.cli.main:apply_job_app"
 where = ["src"]
 
 [tool.setuptools.package-data]
-job_hunter_ai = ["py.typed"]
+job_hunter_ai = ["py.typed", "infra/repository/migrations/*.sql"]
 
 [tool.ruff]
 line-length = 100
@@ -73,6 +73,7 @@ warn_unused_configs = true
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+disallow_untyped_calls = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

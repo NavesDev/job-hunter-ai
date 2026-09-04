@@ -32,16 +32,19 @@ src/job_hunter_ai/
 ├── domain/
 │   ├── entities/    Job, ApplicationResult, CandidateProfile, SmtpConfig
 │   ├── ports/       JobSource, JobApplier, JobRepository
+│   ├── job_id.py    the deterministic job identity rule
+│   ├── time_utils.py  ISO 8601 UTC, the single time representation
 │   └── errors.py    typed exceptions, each carrying its contract `code`
 ├── application/     ListJobsUseCase, ApplyJobUseCase
 ├── infra/
-│   ├── sources/     concrete JobSource (ManualJsonJobSource, ...)
+│   ├── sources/     concrete JobSource (ManualJsonJobSource) + registry
 │   ├── appliers/    concrete JobApplier (EmailApplier, per-platform form appliers)
-│   └── repository/  SqliteJobRepository + migrations/
+│   └── repository/  SqliteJobRepository + migrations_runner + migrations/
 ├── config/
 │   └── loader.py    combines config/local/config.yaml + .env
 └── cli/
     ├── main.py      list-jobs, apply-job
+    ├── serializers.py  entities → the JSON payloads of CONTRACT.md
     └── output.py    the only place that writes to stdout/stderr
 
 config/
@@ -86,7 +89,7 @@ Full detail in the [spec](superpowers/specs/2026-09-03-mvp-architecture-design.m
 
 ## Errors
 
-`infra` raises typed exceptions (`domain/errors.py`, each carrying a `code` from the [contract](CONTRACT.md)); `application`/`cli` catch them and turn them into structured JSON on stderr plus a non-zero exit code, through `cli/output.py`. No raw stack trace ever reaches the agent that called the script.
+`infra` raises typed exceptions (`domain/errors.py`, each carrying a `code` from the [contract](CONTRACT.md)); the `contract_command` decorator in `cli/output.py` catches them at the single boundary and turns them into structured JSON on stderr plus a non-zero exit code. No raw stack trace ever reaches the agent that called the script. The full policy — fail-fast, which layer raises what, and when EAFP applies — is in [CODE_STANDARDS.md](CODE_STANDARDS.md#fail-fast).
 
 ## Tests
 
