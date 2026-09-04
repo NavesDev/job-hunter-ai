@@ -13,7 +13,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) · [Features](docs/FEATURES.md) · [C
 
 ## Status
 
-🚧 **Pre-alpha.** The foundation is in place (installable package, CLI contract, CI, tests). The `list-jobs` and `apply-job` commands exist but still answer `NOT_IMPLEMENTED` — delivering them is [Sprint 01](docs/sprints/SPRINT-01-MVP.md).
+🚧 **Pre-alpha.** `list-jobs` works end to end with the `manual` source: it normalizes a JSON file, stores the jobs in SQLite and prints the contract payload. `apply-job` still answers `NOT_IMPLEMENTED` — it is the remaining half of [Sprint 01](docs/sprints/SPRINT-01-MVP.md).
 
 ## Requirements
 
@@ -52,7 +52,16 @@ list-jobs --source manual --file jobs.json --max-length 100
 | `--file` | source-dependent | Path to the input JSON/CSV (`manual` source) |
 | `--max-length` | no (default 50) | Maximum number of jobs returned |
 
-Output: JSON on stdout, a list of normalized jobs (`id`, `title`, `company`, `description`, `url`, `raw`). Every run stores and deduplicates into the local SQLite database — stable ids, no duplicates across runs ([DATA_MODEL.md](docs/DATA_MODEL.md)).
+The `manual` source expects a JSON list; `title` and `company` are required, everything else optional:
+
+```json
+[
+  {"title": "Backend Engineer", "company": "Acme", "url": "https://acme.com/jobs/1",
+   "description": "Python, SQL", "apply_email": "jobs@acme.com"}
+]
+```
+
+Output: JSON on stdout, a list of normalized jobs (`id`, `source`, `title`, `company`, `description`, `url`, `apply_email`, `raw`, `collected_at`). Every run stores and deduplicates into the local SQLite database — stable ids, no duplicates across runs ([DATA_MODEL.md](docs/DATA_MODEL.md)). Errors go to stderr as `{"error": ..., "code": ...}` with a non-zero exit code ([CONTRACT.md](docs/CONTRACT.md)).
 
 ### Apply to a job
 

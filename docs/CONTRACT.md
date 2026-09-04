@@ -18,9 +18,9 @@ The input/output contract every script (`list-jobs`, `apply-job`, and any new co
 |---|---|---|---|
 | `--source` | string | yes | Name of a registered source (`manual`) |
 | `--file` | path | source-dependent | Input file (`manual` source) |
-| `--max-length` | int | no (default 50) | Maximum number of jobs returned |
+| `--max-length` | int | no (default 50) | Maximum number of jobs returned; must be `>= 1` |
 
-**Output** (stdout), a list of `Job`:
+**Output** (stdout), a list of `Job`. Every field is always present; `url` and `apply_email` may be `null`. `raw` carries the untouched source payload, for auditing.
 
 ```json
 [
@@ -31,6 +31,7 @@ The input/output contract every script (`list-jobs`, `apply-job`, and any new co
     "company": "Acme",
     "description": "...",
     "url": "https://...",
+    "apply_email": "jobs@acme.com",
     "raw": {},
     "collected_at": "2026-09-03T14:00:00Z"
   }

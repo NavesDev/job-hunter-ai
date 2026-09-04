@@ -1,6 +1,6 @@
 # Sprint 01 — MVP: list jobs and apply by email
 
-- **Status:** not started
+- **Status:** in progress — TASK-01 delivered, TASK-02 pending
 - **Start:** 2026-09-03
 - **Sprint goal:** starting from a hand-made list of jobs, I can list them through the CLI and email my application to one of them, without editing any code.
 
@@ -34,7 +34,7 @@ Out (for later):
 
 **Deliverable:** I run `list-jobs --source manual --file jobs.json` and get, on stdout, the normalized list of jobs, already stored in the local database and ready to be used by `apply-job`.
 
-**Branch:** `feat/<issue-id>-list-jobs-manual`
+**Branch:** `feat/2-list-jobs-manual` — issue [#2](https://github.com/NavesDev/job-hunter-ai/issues/2)
 
 **How to validate (as the user):**
 
@@ -87,7 +87,7 @@ apply-job --job-id manual:<hash> --method email --email jobs@company.com \
 # stdout: {"job_id": "...", "method": "email", "status": "sent", ...}; exit code 0
 ```
 
-**Branch:** `feat/<issue-id>-apply-job-email`
+**Branch:** `feat/3-apply-job-email` — issue [#3](https://github.com/NavesDev/job-hunter-ai/issues/3)
 
 **Acceptance criteria:**
 
