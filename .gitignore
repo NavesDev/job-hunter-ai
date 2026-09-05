@@ -23,3 +23,6 @@ htmlcov/
 # Editor
 .idea/
 .vscode/
+
+# Node (maildev, local SMTP for manual validation)
+node_modules/

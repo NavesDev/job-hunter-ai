@@ -1,4 +1,4 @@
-.PHONY: install lint format type layers test check clean
+.PHONY: install lint format type layers test check clean maildev
 
 install:
 	python -m pip install -e ".[dev]"
@@ -20,6 +20,11 @@ layers:
 
 test:
 	pytest
+
+# Local SMTP server + web inbox for manual validation of apply-job.
+# SMTP on :1025, inbox at http://localhost:1080. Needs `npm install` once.
+maildev:
+	npx maildev --smtp 1025 --web 1080
 
 # Same gate CI runs. Run it before opening a PR.
 check: lint type layers test

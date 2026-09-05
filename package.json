@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "maildev": "^3.0.0-rc.2"
+  }
+}

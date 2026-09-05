@@ -4,8 +4,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-03
+
 ### Added
 
+- `apply-job --job-id <id> --method email`: sends the application with the configured HTML body and the resume attached as a PDF, and records the attempt in the local history ([TASK-02](docs/sprints/SPRINT-01-MVP.md)).
+- `EmailApplier` plus the `(method, source)` applier registry: `email` is generic, a form applier is registered per platform. With nothing registered for the pair, applying returns `status="skipped"` and exit code `0` — a valid result, not a failure.
+- Every attempt is persisted, failures included: a send failure records `status="failed"` with the reason before the error propagates as `SMTP_ERROR`.
+- SMTP credentials loaded from `.env` (`config/credentials.py`), never from the versioned YAML, and scrubbed out of any error message that could reach stderr or the history.
+- `CandidateProfile` assembled from the local configuration: name, contact address, resume path, body template and default subject with `{title}`/`{company}`/`{name}`/`{contact_email}` placeholders.
+- `ApplierRegistry` port in `domain/ports`, so the use case resolves an applier without knowing the concrete registry.
+- MailDev as a dev dependency plus `make maildev`: a local SMTP server and web inbox for validating `apply-job` without sending a real email.
 - `list-jobs --source manual --file jobs.json`: reads a JSON file, normalizes it into `Job`s, stores them in SQLite and prints the contract payload on stdout ([TASK-01](docs/sprints/SPRINT-01-MVP.md)).
 - Deterministic job ids (`domain/job_id.py`) following [DATA_MODEL.md](docs/DATA_MODEL.md#job-identity): running `list-jobs` twice over the same input yields the same ids, no duplicated rows, and the original `collected_at` is preserved.
 - `SqliteJobRepository` with versioned SQL migrations applied on open — the database is created on first run at `storage.database_path`.
@@ -13,10 +22,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - `config/loader.py`: typed non-sensitive configuration from `config/local/config.yaml`, falling back to the versioned example; `$JOB_HUNTER_AI_CONFIG` overrides the path.
 - `cli/output.contract_command`: the single boundary turning a typed domain error into the contract's error JSON plus a non-zero exit code.
 - `CLAUDE.md`: engineering principles for agents working in the repository — SOLID, patterns in use, fail-fast, exceptions per layer, EAFP.
-
 - Installable `job-hunter-ai` package (`pyproject.toml`, `src/` layout) exposing the `list-jobs` and `apply-job` entrypoints.
 - Domain entities and ports (`Job`, `ApplicationResult`, `CandidateProfile`, `SmtpConfig`, `JobSource`, `JobApplier`, `JobRepository`) plus typed errors carrying the CLI contract `code`.
-- CLI skeleton: both commands exist, validate the contract flags and answer `NOT_IMPLEMENTED` until [Sprint 01](docs/sprints/SPRINT-01-MVP.md) delivers them.
+- CLI skeleton validating the contract flags, later filled in by the two Sprint 01 deliverables.
 - Versioned example configuration: `config/config.example.yaml` and `config/templates/email-body.example.html`.
 - Quality gate: GitHub Actions CI (Python 3.11 and 3.12), `.pre-commit-config.yaml`, `Makefile` (`make check`) and `.editorconfig`.
 - Layer enforcement: `import-linter` contracts in `pyproject.toml` fail the build when the dependency rule is inverted (`make layers`), covering the boundaries between `domain`, `application`, `infra` and `cli`, plus keeping `domain` free of third-party imports.
@@ -28,6 +36,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - *Responsible use* section in the README (platform Terms of Service, volume, personal data).
 
 ### Changed
+
+- `JobApplier` may now raise a typed `JobHunterError`: the use case records the failed attempt and lets the error propagate, so a failure is never silent and never invisible in the history.
+- `docs/CONTRACT.md`: the temporary `NOT_IMPLEMENTED` code is gone — both commands are delivered.
 
 - `docs/CODE_STANDARDS.md` now states the enforced principles: design patterns in use, fail-fast, exceptions per layer and EAFP.
 - `docs/CONTRACT.md`: the `list-jobs` payload documents `apply_email` and the nullability of each field; `--max-length` must be `>= 1`.
@@ -47,4 +58,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - README with installation, flags and usage examples.
 - Credentials (`.env`) separated from configuration (`config/local/config.yaml`).
 
-[Unreleased]: https://github.com/NavesDev/job-hunter-ai/commits/main
+### Removed
+
+- `NotImplementedYetError` and the `NOT_IMPLEMENTED` contract code, temporary while the commands were stubs.
+
+[Unreleased]: https://github.com/NavesDev/job-hunter-ai/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/NavesDev/job-hunter-ai/releases/tag/v0.1.0

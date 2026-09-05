@@ -2,12 +2,12 @@
 
 Every item is a **deliverable**: something the user gains the ability to do. Classes, ports and modules are implementation detail — they live in [ARCHITECTURE.md](ARCHITECTURE.md), not here.
 
-## Sprint 01 — MVP (in progress)
+## Sprint 01 — MVP (done)
 
 Detail, acceptance criteria and ordering in [docs/sprints/SPRINT-01-MVP.md](sprints/SPRINT-01-MVP.md).
 
-- [ ] **List jobs from a hand-made list** — I point at a JSON file and get normalized jobs back as JSON, stored locally with stable ids and no duplicates across runs.
-- [ ] **Apply to a job by email** — I pick a listed job and send my application with my own HTML body and my resume attached as a PDF; the outcome lands in the local history.
+- [x] **List jobs from a hand-made list** — I point at a JSON file and get normalized jobs back as JSON, stored locally with stable ids and no duplicates across runs.
+- [x] **Apply to a job by email** — I pick a listed job and send my application with my own HTML body and my resume attached as a PDF; the outcome lands in the local history.
 
 ## Foundation (done)
 

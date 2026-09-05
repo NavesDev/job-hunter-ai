@@ -9,13 +9,16 @@ from typing import Annotated
 
 import typer
 
+from job_hunter_ai.application.apply_job import ApplyJobUseCase
 from job_hunter_ai.application.list_jobs import DEFAULT_MAX_LENGTH, ListJobsUseCase
-from job_hunter_ai.cli.output import contract_command, emit_error, emit_success
-from job_hunter_ai.cli.serializers import job_to_payload
+from job_hunter_ai.cli.dependencies import build_applier_registry, build_source_registry
+from job_hunter_ai.cli.output import contract_command, emit_success
+from job_hunter_ai.cli.serializers import application_result_to_payload, job_to_payload
 from job_hunter_ai.config.loader import load_config
-from job_hunter_ai.domain.errors import NotImplementedYetError
+from job_hunter_ai.domain.errors import ApplierNotFoundError, InvalidInputError
 from job_hunter_ai.infra.repository.sqlite_job_repository import SqliteJobRepository
-from job_hunter_ai.infra.sources.registry import SourceRegistry
+
+SUPPORTED_METHODS = ("email", "form")
 
 list_jobs_app = typer.Typer(add_completion=False, help="List jobs from a registered source.")
 apply_job_app = typer.Typer(add_completion=False, help="Apply to an already listed job.")
@@ -32,13 +35,14 @@ def list_jobs(
 ) -> None:
     """List normalized jobs from a source and print them as JSON on stdout."""
     config = load_config()
-    job_source = SourceRegistry().get(source)
+    job_source = build_source_registry().get(source)
     with SqliteJobRepository(config.storage.database_path) as repository:
         jobs = ListJobsUseCase(job_source, repository).execute(max_length=max_length, file=file)
     emit_success([job_to_payload(job) for job in jobs])
 
 
 @apply_job_app.command()
+@contract_command
 def apply_job(
     method: Annotated[str, typer.Option("--method", help="Application method: email or form.")],
     job_id: Annotated[
@@ -53,4 +57,14 @@ def apply_job(
     ] = False,
 ) -> None:
     """Apply to an already listed job and print the result as JSON on stdout."""
-    emit_error(NotImplementedYetError("apply-job is not implemented yet (Sprint 01, TASK-02)"))
+    if all_ready:
+        raise InvalidInputError("--all-ready is not supported yet; apply one --job-id at a time")
+    if method not in SUPPORTED_METHODS:
+        raise ApplierNotFoundError(
+            f"unknown --method `{method}`; supported: {', '.join(SUPPORTED_METHODS)}"
+        )
+    config = load_config()
+    with SqliteJobRepository(config.storage.database_path) as repository:
+        use_case = ApplyJobUseCase(repository, build_applier_registry(), config.candidate)
+        result = use_case.execute(job_id or "", method, email=email, subject=subject)
+    emit_success(application_result_to_payload(result))

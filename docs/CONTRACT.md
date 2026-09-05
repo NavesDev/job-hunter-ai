@@ -75,8 +75,6 @@ A single JSON object on stderr:
 
 Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`. A new code must be documented here before being used.
 
-`NOT_IMPLEMENTED` is **temporary**: while a command exists but has not been delivered, it answers with that code. It leaves the code and this section when [Sprint 01](sprints/SPRINT-01-MVP.md) closes.
-
 ## Compatibility
 
 A change that **breaks** the contract (removing a field, changing a type, renaming something) requires a new major version of the package and a `BREAKING` entry in the [CHANGELOG](../CHANGELOG.md). Adding a new field to a response is always compatible (consumers must ignore unknown fields).

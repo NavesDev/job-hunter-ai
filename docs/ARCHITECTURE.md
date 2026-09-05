@@ -31,19 +31,21 @@ A single distributable package (`job_hunter_ai`) under `src/`, with the layers a
 src/job_hunter_ai/
 ├── domain/
 │   ├── entities/    Job, ApplicationResult, CandidateProfile, SmtpConfig
-│   ├── ports/       JobSource, JobApplier, JobRepository
+│   ├── ports/       JobSource, JobApplier, ApplierRegistry, JobRepository
 │   ├── job_id.py    the deterministic job identity rule
 │   ├── time_utils.py  ISO 8601 UTC, the single time representation
 │   └── errors.py    typed exceptions, each carrying its contract `code`
 ├── application/     ListJobsUseCase, ApplyJobUseCase
 ├── infra/
 │   ├── sources/     concrete JobSource (ManualJsonJobSource) + registry
-│   ├── appliers/    concrete JobApplier (EmailApplier, per-platform form appliers)
+│   ├── appliers/    EmailApplier + email_message builder + registry
 │   └── repository/  SqliteJobRepository + migrations_runner + migrations/
 ├── config/
-│   └── loader.py    combines config/local/config.yaml + .env
+│   ├── loader.py       non-sensitive settings from config/local/config.yaml
+│   └── credentials.py  SMTP credentials, only from .env
 └── cli/
     ├── main.py      list-jobs, apply-job
+    ├── dependencies.py  the composition root (lazy factories)
     ├── serializers.py  entities → the JSON payloads of CONTRACT.md
     └── output.py    the only place that writes to stdout/stderr
 
@@ -56,8 +58,9 @@ config/
 .env                                    gitignored — real credentials (SMTP, per-platform logins)
 
 tests/
-├── unit/         use cases with mocked ports
-├── integration/  real SQLite, fake SMTP
+├── unit/         use cases with faked ports
+├── fakes/        in-memory port implementations shared by the suites
+├── integration/  real SQLite, local fake SMTP (aiosmtpd)
 └── cli/          Typer CliRunner
 ```
 
@@ -77,7 +80,7 @@ Two distinct things, two distinct places:
 - **Configuration** (non-sensitive: paths, default template, preferred method order): `config/local/config.yaml`, loaded by `config/loader.py`.
 - **Credentials** (secret: SMTP username/password, per-platform logins/tokens): `.env` at the root, loaded through `python-dotenv`. Never committed, never in YAML.
 
-`config/loader.py` reads both and assembles `CandidateProfile`/`SmtpConfig` from the combination. Platform-specific credentials use a per-source prefix (`LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD`) in the same `.env` — `config/local/sources/<platform>.yaml` only holds that platform's non-sensitive settings (selectors, timeouts), when needed.
+`config/loader.py` assembles `CandidateProfile` from the YAML; `config/credentials.py` assembles `SmtpConfig` from `.env`, and is only called when a command actually needs to send something. Platform-specific credentials use a per-source prefix (`LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD`) in the same `.env` — `config/local/sources/<platform>.yaml` only holds that platform's non-sensitive settings (selectors, timeouts), when needed.
 
 ## Main contracts
 

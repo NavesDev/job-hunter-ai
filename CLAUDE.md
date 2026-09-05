@@ -36,10 +36,10 @@ platform is a **new class plus a registry entry**, never an edit to `application
 | Pattern | Where | Why |
 |---|---|---|
 | Ports & Adapters | `domain/ports` + `infra/` | swap SQLite or SMTP without touching a use case |
-| Registry + Factory | `infra/sources/registry.py` | resolve `--source` by name; Open/Closed for new platforms |
+| Registry + Factory | `infra/sources/registry.py`, `infra/appliers/registry.py` | resolve `--source` and `(method, source)` by name; Open/Closed for new platforms |
 | Strategy | `JobSource`, `JobApplier` | one interchangeable implementation per platform |
 | Repository | `JobRepository` | persistence details never leak into `application/` |
-| Dependency Injection | use case constructors | `cli/` is the only composition root |
+| Dependency Injection | use case constructors | `cli/dependencies.py` is the only composition root |
 | Decorator | `cli/output.contract_command` | one place turns a typed error into the CLI contract |
 
 Add a pattern only when it removes a real conditional or a real coupling. Speculative
@@ -85,3 +85,5 @@ you leap there.
 - Conventional Commits with a mandatory layer scope: `feat(infra): ...`.
 - Code, comments and documentation in English. Commit messages in English.
 - No `print()` on a command's stdout. `cli/output.py` is the only writer to the streams.
+- A credential never reaches stderr, a log or the history: scrub it before the message escapes (`EmailApplier._scrub`).
+- Validate `apply-job` against MailDev (`make maildev`), never a real inbox.
