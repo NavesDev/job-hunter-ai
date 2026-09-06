@@ -174,3 +174,27 @@ def test_form_applier_should_raise_applier_error_when_the_page_has_no_applicatio
     with pytest.raises(ApplierError) as error:
         applier().apply(job, profile)
     assert error.value.code == "APPLIER_ERROR"
+
+
+def test_form_applier_should_not_require_the_consent_when_it_is_not_going_to_submit(site, profile):
+    # Arrange
+    subject = GeekHunterFormApplier({"accept_terms": False, "submit": False})
+
+    # Act
+    result = subject.apply(job_at(site), profile)
+
+    # Assert
+    assert result.status == ApplicationStatus.SKIPPED
+
+
+def test_form_applier_should_leave_the_terms_unchecked_when_it_is_not_going_to_submit(
+    site: str, profile: CandidateProfile
+) -> None:
+    # Arrange
+    subject = GeekHunterFormApplier({"accept_terms": False, "submit": False, "headless": True})
+
+    # Act
+    result = subject.apply(job_at(site), profile)
+
+    # Assert
+    assert "nothing submitted" in result.detail

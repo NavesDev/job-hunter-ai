@@ -85,7 +85,8 @@ class GeekHunterFormApplier:
         return resume
 
     def _checked_consent(self) -> None:
-        if not self._accept_terms:
+        """Only a real submission accepts anything: a dry run ticks no box and asks nothing."""
+        if self._submit and not self._accept_terms:
             raise InvalidInputError(
                 "applying on geekhunter accepts its Privacy Policy and Terms of Use on your "
                 "behalf; set `accept_terms: true` in config/local/sources/geekhunter.yaml to "
@@ -132,7 +133,7 @@ class GeekHunterFormApplier:
         form.locator("input[type='file']").set_input_files(str(resume))
         self._fill_salary(form, values["salary"])
         checkbox = form.locator("input[type='checkbox']")
-        if checkbox.count() and not checkbox.first.is_checked():
+        if self._submit and checkbox.count() and not checkbox.first.is_checked():
             checkbox.first.check()
 
     def _fill_salary(self, form: Any, salary: str) -> None:
