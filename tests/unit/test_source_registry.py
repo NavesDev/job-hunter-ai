@@ -37,3 +37,15 @@ def test_source_registry_should_expose_a_new_platform_when_it_is_registered():
     # Assert
     assert "fake" in registry.available()
     assert isinstance(registry.get("fake"), FakeJobSource)
+
+
+def test_source_registry_should_resolve_geekhunter_because_it_ships_registered():
+    # Arrange
+    registry = SourceRegistry()
+
+    # Act
+    source = registry.get("geekhunter")
+
+    # Assert
+    assert source.name == "geekhunter"
+    assert "geekhunter" in registry.available()

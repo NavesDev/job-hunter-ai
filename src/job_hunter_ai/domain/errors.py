@@ -25,3 +25,7 @@ class SmtpError(JobHunterError):
 
 class InvalidInputError(JobHunterError):
     code = "INVALID_INPUT"
+
+
+class SourceError(JobHunterError):
+    code = "SOURCE_ERROR"

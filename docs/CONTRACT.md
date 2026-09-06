@@ -16,8 +16,12 @@ The input/output contract every script (`list-jobs`, `apply-job`, and any new co
 
 | Flag | Type | Required | Description |
 |---|---|---|---|
-| `--source` | string | yes | Name of a registered source (`manual`) |
+| `--source` | string | yes | Name of a registered source (`manual`, `geekhunter`) |
 | `--file` | path | source-dependent | Input file (`manual` source) |
+
+The `geekhunter` source takes no flag of its own: what it collects is filtered by
+`config/local/sources/geekhunter.yaml` (see the [README](../README.md#geekhunter)).
+It never returns an `apply_email` — the platform exposes none.
 | `--max-length` | int | no (default 50) | Maximum number of jobs returned; must be `>= 1` |
 
 **Output** (stdout), a list of `Job`. Every field is always present; `url` and `apply_email` may be `null`. `raw` carries the untouched source payload, for auditing.
@@ -73,7 +77,12 @@ A single JSON object on stderr:
 {"error": "smtp connection refused", "code": "SMTP_ERROR"}
 ```
 
-Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`. A new code must be documented here before being used.
+Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`, `SOURCE_ERROR`. A new code must be documented here before being used.
+
+`SOURCE_ERROR` means a source could not deliver its jobs: the platform refused the
+request, or the page no longer has the shape the source parses. It is never a silent
+empty result — a source that finds nothing where it expected jobs raises instead of
+returning `[]`.
 
 ## Compatibility
 

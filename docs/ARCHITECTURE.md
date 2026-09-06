@@ -37,11 +37,12 @@ src/job_hunter_ai/
 │   └── errors.py    typed exceptions, each carrying its contract `code`
 ├── application/     ListJobsUseCase, ApplyJobUseCase
 ├── infra/
-│   ├── sources/     concrete JobSource (ManualJsonJobSource) + registry
+│   ├── sources/     concrete JobSource (ManualJsonJobSource, geekhunter/) + registry
 │   ├── appliers/    EmailApplier + email_message builder + registry
 │   └── repository/  SqliteJobRepository + migrations_runner + migrations/
 ├── config/
 │   ├── loader.py       non-sensitive settings from config/local/config.yaml
+│   ├── sources.py      per-platform settings from config/local/sources/<platform>.yaml
 │   └── credentials.py  SMTP credentials, only from .env
 └── cli/
     ├── main.py      list-jobs, apply-job
@@ -50,6 +51,7 @@ src/job_hunter_ai/
     └── output.py    the only place that writes to stdout/stderr
 
 config/
+├── sources/geekhunter.example.yaml     versioned (example) — per-platform settings
 ├── templates/email-body.example.html   versioned (example)
 ├── config.example.yaml                 versioned (example) — non-sensitive settings
 └── local/                              gitignored: config.yaml, email-body.html, resume.pdf, sources/<platform>.yaml
@@ -68,7 +70,7 @@ tests/
 
 | Port | Resolution key | Phase 1 | Extension |
 |---|---|---|---|
-| `JobSource` | `source` | `"manual"` | one new source per platform |
+| `JobSource` | `source` | `"manual"`, `"geekhunter"` | one new source per platform |
 | `JobApplier` | `(method, source)` | `"email" → "*"` (generic) | `"form" → <platform>`, mandatory per site |
 
 With no applier registered for `(method, source)`, `apply-job` returns `status="skipped"` — never a silent failure, never a blocked flow.

@@ -4,6 +4,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ## [Unreleased]
 
+### Added
+
+- `list-jobs --source geekhunter`: collects jobs from GeekHunter's public listing, reading the
+  `JobPosting` structured data each job page renders. No login, no browser, no new dependency —
+  the source identifies itself by user-agent and paces itself to one request per second
+  ([#6](https://github.com/NavesDev/job-hunter-ai/issues/6)).
+- Per-platform settings in `config/local/sources/<platform>.yaml`, with
+  `config/sources/geekhunter.example.yaml` as the versioned example. GeekHunter's listing filters
+  (`workModality`, `experienceLevel`, `searchTerm`, `cityName`, `minSalary`, `maxSalary`,
+  `publishedAfter`) are validated against the values the platform actually honors, before any
+  request goes out.
+- `SOURCE_ERROR`, a new contract error code: a source could not deliver its jobs because the
+  platform refused the request or the page changed shape. A source never returns an empty list
+  where it expected jobs ([CONTRACT.md](docs/CONTRACT.md#errors-any-command)).
+- The GeekHunter platform investigation that settled the design, recorded as a
+  [spec](docs/superpowers/specs/2026-09-05-geekhunter-source-design.md).
+
 ## [0.1.0] - 2026-09-03
 
 ### Added

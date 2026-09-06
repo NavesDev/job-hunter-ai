@@ -48,7 +48,7 @@ list-jobs --source manual --file jobs.json --max-length 100
 
 | Flag | Required | Description |
 |---|---|---|
-| `--source` | yes | Registered job source (`manual` in phase 1) |
+| `--source` | yes | Registered job source (`manual`, `geekhunter`) |
 | `--file` | source-dependent | Path to the input JSON/CSV (`manual` source) |
 | `--max-length` | no (default 50) | Maximum number of jobs returned |
 
@@ -60,6 +60,34 @@ The `manual` source expects a JSON list; `title` and `company` are required, eve
    "description": "Python, SQL", "apply_email": "jobs@acme.com"}
 ]
 ```
+
+#### GeekHunter
+
+```bash
+list-jobs --source geekhunter --max-length 20
+```
+
+Collects from GeekHunter's public listing. It takes no flag of its own — what it
+collects is set in `config/local/sources/geekhunter.yaml`, copied from
+[`config/sources/geekhunter.example.yaml`](config/sources/geekhunter.example.yaml):
+
+```yaml
+filters:
+  workModality: "remote"      # remote | hybrid | on-site | remote-in-city
+  experienceLevel: "senior"   # intern | entry | mid | senior | manager
+  searchTerm: "python"
+```
+
+An unknown filter name or value raises `INVALID_INPUT` **before** any request goes
+out: the platform silently ignores a bad filter and returns its whole listing, which
+would quietly hand you the wrong jobs.
+
+The source needs no login and reads only public pages. It identifies itself by
+user-agent and paces itself to one request per second — collecting `n` jobs costs
+`ceil(n / 10)` listing requests plus one detail request per job. Jobs come back with
+`apply_email: null`, because the platform exposes no address; applying goes through
+its form. The design behind all of this is in
+[the spec](docs/superpowers/specs/2026-09-05-geekhunter-source-design.md).
 
 Output: JSON on stdout, a list of normalized jobs (`id`, `source`, `title`, `company`, `description`, `url`, `apply_email`, `raw`, `collected_at`). Every run stores and deduplicates into the local SQLite database — stable ids, no duplicates across runs ([DATA_MODEL.md](docs/DATA_MODEL.md)). Errors go to stderr as `{"error": ..., "code": ...}` with a non-zero exit code ([CONTRACT.md](docs/CONTRACT.md)).
 

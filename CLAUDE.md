@@ -6,7 +6,12 @@ Guidance for any AI agent (and any human) working in this repository.
 
 Deterministic, AI-free CLI scripts (`list-jobs`, `apply-job`). The intelligence lives
 *outside*: an orchestrating agent decides and passes data in through flags. Never add an
-LLM call, a heuristic guess or a network fetch to the scripts themselves.
+LLM call or a heuristic guess to the scripts.
+
+Network access is allowed in exactly one place: an `infra/` source or applier that reads
+or drives a platform the user asked for (`geekhunter`, SMTP). It is always explicit, paced
+and identified — never a hidden fetch, never in `domain/` or `application/`, and never in a
+test (the suites run on recorded fixtures and a local server).
 
 ## Read before changing code
 
