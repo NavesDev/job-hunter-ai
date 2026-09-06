@@ -52,7 +52,12 @@ It never returns an `apply_email` — the platform exposes none.
 | `--method` | `email` \| `form` | yes | Application method |
 | `--email` | string | if `method=email` and the job carries no address | Recipient |
 | `--subject` | string | no | Subject; defaults to the local configuration |
+| `--salary` | `clt` \| `pj` \| `internship` | no | Which predefined salary expectation to offer |
 | `--all-ready` | flag | no | Applies in batch |
+
+`--salary` never carries an amount: it names one of the expectations the profile already
+declares (`candidate.extra_fields.salary_expectation_clt`, `_pj`, `_internship`). Without
+it, the applier offers the one matching the contract type the posting asks for.
 
 `--method form` on a `geekhunter` job drives the platform's fixed form in a browser,
 using the profile and the settings in `config/local/sources/geekhunter.yaml`. With

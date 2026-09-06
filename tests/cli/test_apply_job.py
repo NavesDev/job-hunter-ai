@@ -196,3 +196,15 @@ def test_apply_job_should_never_leak_the_password_when_the_send_fails(
     # Assert
     assert "app-password" not in (result.stderr or result.output)
     assert all("app-password" not in row[1] for row in applications(workspace))
+
+
+def test_apply_job_should_reject_a_salary_that_is_not_a_predefined_kind(runner, workspace):
+    # Arrange
+    args = ["--job-id", "geekhunter:abc", "--method", "form", "--salary", "4200"]
+
+    # Act
+    result = runner.invoke(apply_job_app, args)
+
+    # Assert
+    assert result.exit_code != 0
+    assert parse_stderr_json(result)["code"] == "INVALID_INPUT"

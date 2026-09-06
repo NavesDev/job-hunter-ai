@@ -116,9 +116,29 @@ browser_profile_dir: "config/local/browser-profile"   # a profile you logged in 
 ```
 
 The applier never logs in and never touches a password — log in once by hand in that
-profile. The phone, LinkedIn and expected salary come from `candidate.extra_fields`
-(`phone`, `linkedin`, `salary_expectation`); a missing one raises `INVALID_INPUT` **before**
-the browser opens, because an application cannot be un-sent. `status="sent"` is only
+profile. The phone, LinkedIn and the expected salaries come from `candidate.extra_fields`:
+
+```yaml
+candidate:
+  extra_fields:
+    phone: "+55 61 90000-0000"
+    linkedin: "https://www.linkedin.com/in/you"
+    salary_expectation_clt: "4000"
+    salary_expectation_pj: "4500"
+    salary_expectation_internship: "2000"
+```
+
+GeekHunter asks for the expectation in the posting's own contract type, and says which in
+the field's name — so the right number is picked for you. `--salary clt|pj|internship`
+overrides that:
+
+```bash
+apply-job --job-id geekhunter:6dd70e03512a --method form --salary pj
+```
+
+`--salary` never carries an amount: it names one of the values above. Only what the profile
+predefines can ever be sent. A missing field raises `INVALID_INPUT` **before** the browser
+opens, because an application cannot be un-sent. `status="sent"` is only
 returned when GeekHunter answers with its own confirmation — anything else is `failed`,
 recorded in the history with the reason.
 

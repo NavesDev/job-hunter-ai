@@ -22,6 +22,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
   profile and submits it in a browser, reporting `status="sent"` only when GeekHunter answers
   with its own confirmation. `submit: false` fills the form and stops, with the filled values
   in `detail` and nothing sent ([#6](https://github.com/NavesDev/job-hunter-ai/issues/6)).
+- `apply-job --salary clt|pj|internship`: picks which predefined salary expectation to offer.
+  The expectations live in `candidate.extra_fields` (`salary_expectation_clt`, `_pj`,
+  `_internship`); the flag names one of them and never carries an amount, so only a figure the
+  profile already declares can reach a form. Without the flag, the applier offers the one
+  matching the contract type the posting asks for, read from the form field's own name.
 - Playwright as the optional `form` extra (`pip install -e ".[form]"`), decided in
   [ADR-0005](docs/adr/0005-playwright-for-form-appliers.md) and fenced in by a new
   `import-linter` contract: no layer outside `infra/appliers/` may import it.

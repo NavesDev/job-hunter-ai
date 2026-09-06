@@ -198,3 +198,75 @@ def test_form_applier_should_leave_the_terms_unchecked_when_it_is_not_going_to_s
 
     # Assert
     assert "nothing submitted" in result.detail
+
+
+def multi_salary_profile(resume: Path) -> CandidateProfile:
+    return CandidateProfile(
+        name="Ada Lovelace",
+        contact_email="ada@example.com",
+        resume_path=resume,
+        email_body_path=resume,
+        extra_fields={
+            "phone": "+55 61 99999-0000",
+            "linkedin": "https://www.linkedin.com/in/ada",
+            "salary_expectation_clt": "4000",
+            "salary_expectation_pj": "4500",
+            "salary_expectation_internship": "2000",
+        },
+    )
+
+
+def test_form_applier_should_pick_the_salary_of_the_contract_the_form_asks_for(
+    site: str, resume: Path
+) -> None:
+    # Arrange
+    subject = applier(submit=False)
+
+    # Act
+    result = subject.apply(job_at(site), multi_salary_profile(resume))
+
+    # Assert
+    assert "salary=4000" in result.detail  # the recorded form asks as CLT
+
+
+def test_form_applier_should_use_the_chosen_salary_when_the_caller_picks_one(
+    site: str, resume: Path
+) -> None:
+    # Arrange
+    subject = applier(submit=False)
+
+    # Act
+    result = subject.apply(job_at(site), multi_salary_profile(resume), salary="pj")
+
+    # Assert
+    assert "salary=4500" in result.detail
+
+
+def test_form_applier_should_raise_invalid_input_when_the_chosen_salary_is_not_predefined(
+    site: str, resume: Path
+) -> None:
+    # Arrange
+    subject = applier(submit=False)
+
+    # Act / Assert
+    with pytest.raises(InvalidInputError) as error:
+        subject.apply(job_at(site), multi_salary_profile(resume), salary="freelance")
+    assert "clt" in str(error.value)
+
+
+def test_form_applier_should_raise_invalid_input_when_no_salary_is_configured_at_all(
+    site: str, resume: Path
+) -> None:
+    # Arrange
+    profile = CandidateProfile(
+        name="Ada Lovelace",
+        contact_email="ada@example.com",
+        resume_path=resume,
+        email_body_path=resume,
+        extra_fields={"phone": "+55 61 99999-0000", "linkedin": "https://linkedin.com/in/ada"},
+    )
+
+    # Act / Assert
+    with pytest.raises(InvalidInputError) as error:
+        applier(submit=False).apply(job_at(site), profile)
+    assert "salary_expectation" in str(error.value)

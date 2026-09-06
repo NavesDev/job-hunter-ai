@@ -19,12 +19,13 @@ from job_hunter_ai.domain.entities.candidate_profile import CandidateProfile
 from job_hunter_ai.domain.entities.job import Job
 from job_hunter_ai.domain.errors import ApplierError, InvalidInputError
 from job_hunter_ai.domain.time_utils import utc_now
+from job_hunter_ai.infra.appliers import geekhunter_salary as salary
 
 FORM_SELECTOR = "form:has(input[name='name'])"
 SUBMIT_SELECTOR = "button[type='submit']"
 CONFIRMATION_TEXT = "Candidatura Completa"
 SALARY_FIELD_PREFIX = "salaryExpectation"
-REQUIRED_EXTRA_FIELDS = ("phone", "linkedin", "salary_expectation")
+REQUIRED_EXTRA_FIELDS = ("phone", "linkedin")
 DEFAULT_TIMEOUT_MS = 30_000
 
 
@@ -44,9 +45,11 @@ class GeekHunterFormApplier:
     def apply(self, job: Job, profile: CandidateProfile, **options: Any) -> ApplicationResult:
         url = self._checked_url(job)
         values = self._checked_values(profile)
+        salaries = salary.require_any(profile.extra_fields)
+        chosen = salary.require_choice(salaries, options.get("salary"))
         resume = self._checked_resume(profile)
         self._checked_consent()
-        filled = self._drive(url, values, resume)
+        filled = self._drive(url, values, resume, salaries, chosen)
         return self._result(job, filled)
 
     # --- validation: everything that can be known before the browser opens ---
@@ -73,7 +76,6 @@ class GeekHunterFormApplier:
             "name": profile.name.strip(),
             "phone": str(profile.extra_fields["phone"]).strip(),
             "linkedin": str(profile.extra_fields["linkedin"]).strip(),
-            "salary": str(profile.extra_fields["salary_expectation"]).strip(),
         }
 
     def _checked_resume(self, profile: CandidateProfile) -> Path:
@@ -95,7 +97,14 @@ class GeekHunterFormApplier:
 
     # --- the browser ---
 
-    def _drive(self, url: str, values: dict[str, str], resume: Path) -> dict[str, str]:
+    def _drive(
+        self,
+        url: str,
+        values: dict[str, str],
+        resume: Path,
+        salaries: dict[str, str],
+        chosen: str | None,
+    ) -> dict[str, str]:
         from playwright.sync_api import Error as PlaywrightError
         from playwright.sync_api import sync_playwright
 
@@ -106,7 +115,7 @@ class GeekHunterFormApplier:
                 page.set_default_timeout(self._timeout_ms)
                 try:
                     page.goto(url, wait_until="domcontentloaded")
-                    self._fill(page, values, resume)
+                    values["salary"] = self._fill(page, values, resume, salaries, chosen)
                     if self._submit:
                         self._submit_and_confirm(page, url)
                 finally:
@@ -123,7 +132,14 @@ class GeekHunterFormApplier:
             )
         return playwright.chromium.launch(headless=self._headless).new_context()
 
-    def _fill(self, page: Any, values: dict[str, str], resume: Path) -> None:
+    def _fill(
+        self,
+        page: Any,
+        values: dict[str, str],
+        resume: Path,
+        salaries: dict[str, str],
+        chosen: str | None,
+    ) -> str:
         form = page.locator(FORM_SELECTOR)
         if form.count() == 0:
             raise ApplierError(f"no application form on {page.url}; the page changed shape")
@@ -131,17 +147,21 @@ class GeekHunterFormApplier:
         form.locator("input[name='phone']").fill(values["phone"])
         form.locator("input[name='linkedin']").fill(values["linkedin"])
         form.locator("input[type='file']").set_input_files(str(resume))
-        self._fill_salary(form, values["salary"])
+        filled_salary = self._fill_salary(form, salaries, chosen)
         checkbox = form.locator("input[type='checkbox']")
         if self._submit and checkbox.count() and not checkbox.first.is_checked():
             checkbox.first.check()
+        return filled_salary
 
-    def _fill_salary(self, form: Any, salary: str) -> None:
+    def _fill_salary(self, form: Any, salaries: dict[str, str], chosen: str | None) -> str:
         """The field name carries the contract type (`salaryExpectation.CLT`, `.PJ`, ...)."""
         field = form.locator(f"input[name^='{SALARY_FIELD_PREFIX}']")
         if field.count() == 0:
             raise ApplierError("the application form has no expected-salary field")
-        field.first.fill(salary)
+        field_name = str(field.first.get_attribute("name") or SALARY_FIELD_PREFIX)
+        value = salary.for_field(salaries, field_name, chosen)
+        field.first.fill(value)
+        return value
 
     def _submit_and_confirm(self, page: Any, url: str) -> None:
         page.locator(SUBMIT_SELECTOR).first.click()

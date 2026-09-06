@@ -16,6 +16,7 @@ from job_hunter_ai.cli.output import contract_command, emit_success
 from job_hunter_ai.cli.serializers import application_result_to_payload, job_to_payload
 from job_hunter_ai.config.loader import load_config
 from job_hunter_ai.domain.errors import ApplierNotFoundError, InvalidInputError
+from job_hunter_ai.infra.appliers.geekhunter_salary import KINDS as SALARY_KINDS
 from job_hunter_ai.infra.repository.sqlite_job_repository import SqliteJobRepository
 
 SUPPORTED_METHODS = ("email", "form")
@@ -52,6 +53,13 @@ def apply_job(
         str | None, typer.Option("--email", help="Recipient of the application.")
     ] = None,
     subject: Annotated[str | None, typer.Option("--subject", help="Email subject.")] = None,
+    salary: Annotated[
+        str | None,
+        typer.Option(
+            "--salary",
+            help="Which predefined salary expectation to offer: clt, pj or internship.",
+        ),
+    ] = None,
     all_ready: Annotated[
         bool, typer.Option("--all-ready", help="Apply in batch to every collected job.")
     ] = False,
@@ -63,8 +71,13 @@ def apply_job(
         raise ApplierNotFoundError(
             f"unknown --method `{method}`; supported: {', '.join(SUPPORTED_METHODS)}"
         )
+    if salary is not None and salary.strip().lower() not in SALARY_KINDS:
+        raise InvalidInputError(
+            f"unknown --salary `{salary}`; it names a predefined expectation, not an amount: "
+            f"{', '.join(SALARY_KINDS)}"
+        )
     config = load_config()
     with SqliteJobRepository(config.storage.database_path) as repository:
         use_case = ApplyJobUseCase(repository, build_applier_registry(), config.candidate)
-        result = use_case.execute(job_id or "", method, email=email, subject=subject)
+        result = use_case.execute(job_id or "", method, email=email, subject=subject, salary=salary)
     emit_success(application_result_to_payload(result))

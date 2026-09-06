@@ -6,11 +6,17 @@ candidate:
   name: "Your Name"
   # Contact address shown in the email body (not an SMTP credential).
   contact_email: "you@example.com"
-  # Extra fields reused by form appliers (phase 2). Free-form keys.
+  # Extra fields reused by form appliers. Free-form keys.
   extra_fields:
     phone: "+1 555 000 0000"
     linkedin: "https://linkedin.com/in/you"
     portfolio: ""
+    # Expected monthly salary, one per contract type. A form applier offers the one the
+    # posting asks for; `apply-job --salary clt|pj|internship` picks a different one.
+    # These are the only amounts that can ever be sent: nothing is typed at the prompt.
+    salary_expectation_clt: "4000"
+    salary_expectation_pj: "4500"
+    salary_expectation_internship: "2000"
 
 application:
   # Resume attached to the application. Path relative to the repository root.
