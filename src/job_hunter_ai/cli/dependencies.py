@@ -11,6 +11,7 @@ from pathlib import Path
 from job_hunter_ai.config.credentials import load_smtp_config
 from job_hunter_ai.config.sources import load_source_settings
 from job_hunter_ai.infra.appliers.email_applier import EmailApplier
+from job_hunter_ai.infra.appliers.geekhunter_form import GeekHunterFormApplier
 from job_hunter_ai.infra.appliers.registry import ANY_SOURCE, ApplierRegistry
 from job_hunter_ai.infra.sources.geekhunter import GeekHunterJobSource, UrllibHttpClient
 from job_hunter_ai.infra.sources.registry import SourceRegistry
@@ -37,4 +38,12 @@ def build_applier_registry(root: Path | None = None) -> ApplierRegistry:
     def email_applier() -> EmailApplier:
         return EmailApplier(load_smtp_config(root))
 
-    return ApplierRegistry({(EmailApplier.name, ANY_SOURCE): email_applier})
+    def geekhunter_form_applier() -> GeekHunterFormApplier:
+        return GeekHunterFormApplier(load_source_settings(GeekHunterJobSource.name, root))
+
+    return ApplierRegistry(
+        {
+            (EmailApplier.name, ANY_SOURCE): email_applier,
+            ("form", GeekHunterJobSource.name): geekhunter_form_applier,
+        }
+    )

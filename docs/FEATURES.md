@@ -30,7 +30,7 @@ Each one plugs into the existing structure and blocks none of the others.
 ### Medium term
 
 - [x] **Collect jobs straight from a platform** — done for **GeekHunter** (`list-jobs --source geekhunter`): its public listing comes in without a manual export, filtered by the local platform settings. Every further site (LinkedIn, Gupy, Indeed) is a new source class plus a registry entry — and its own Terms of Service check first (see [Responsible use](../README.md#responsible-use)).
-- [ ] **Apply on sites that only accept a form** — automatic filling of the platform's form with the profile data, for sites with no contact address.
+- [x] **Apply on sites that only accept a form** — done for **GeekHunter** (`apply-job --method form`): the platform's fixed form is filled from the profile and submitted in a browser, and the application counts as sent only when the platform confirms it. `submit: false` fills the form and stops, for a first look.
 - [ ] **Resume from a failure without resending** — controlled send retries that cannot deliver the same application twice.
 
 ### Under evaluation

@@ -29,3 +29,20 @@ http:
   timeout_seconds: 30
   # One request at a time, at a human pace. Lower it only if you know why.
   min_request_interval_seconds: 1.0
+
+# --- applying (apply-job --method form). Needs the `form` extra: pip install -e ".[form]"
+# Applying accepts GeekHunter's Privacy Policy and Terms of Use in your name. The applier
+# refuses to run until you say so here yourself — it is not a default.
+accept_terms: false
+
+# false fills the form and stops before submitting: the result is status="skipped" with the
+# filled values in `detail`. Use it the first time, on a job you actually want.
+submit: true
+
+# The browser profile holding your logged-in GeekHunter session. The applier never logs in
+# and never handles a password: log in once by hand in this profile.
+# browser_profile_dir: "config/local/browser-profile"
+
+# false opens a visible window — useful while you are watching it fill the form.
+headless: true
+timeout_ms: 30000

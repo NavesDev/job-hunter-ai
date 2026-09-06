@@ -18,6 +18,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - `SOURCE_ERROR`, a new contract error code: a source could not deliver its jobs because the
   platform refused the request or the page changed shape. A source never returns an empty list
   where it expected jobs ([CONTRACT.md](docs/CONTRACT.md#errors-any-command)).
+- `apply-job --method form` on a GeekHunter job: fills the platform's fixed form from the
+  profile and submits it in a browser, reporting `status="sent"` only when GeekHunter answers
+  with its own confirmation. `submit: false` fills the form and stops, with the filled values
+  in `detail` and nothing sent ([#6](https://github.com/NavesDev/job-hunter-ai/issues/6)).
+- Playwright as the optional `form` extra (`pip install -e ".[form]"`), decided in
+  [ADR-0005](docs/adr/0005-playwright-for-form-appliers.md) and fenced in by a new
+  `import-linter` contract: no layer outside `infra/appliers/` may import it.
+- `APPLIER_ERROR`, a new contract error code: the applier could not complete the attempt on
+  the platform. The attempt is recorded as `failed` before the error propagates
+  ([CONTRACT.md](docs/CONTRACT.md#errors-any-command)).
 - The GeekHunter platform investigation that settled the design, recorded as a
   [spec](docs/superpowers/specs/2026-09-05-geekhunter-source-design.md).
 

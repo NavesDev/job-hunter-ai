@@ -2,7 +2,7 @@
 
 import pytest
 
-from job_hunter_ai.cli.dependencies import build_source_registry
+from job_hunter_ai.cli.dependencies import build_applier_registry, build_source_registry
 from job_hunter_ai.domain.errors import InvalidInputError
 
 
@@ -28,3 +28,23 @@ def test_build_source_registry_should_build_geekhunter_when_the_platform_has_no_
 
     # Assert
     assert source.name == "geekhunter"
+
+
+def test_build_applier_registry_should_resolve_the_geekhunter_form_applier(tmp_path):
+    # Arrange
+    write_geekhunter_settings(tmp_path, "accept_terms: true\n")
+
+    # Act
+    applier = build_applier_registry(tmp_path).get("form", "geekhunter")
+
+    # Assert
+    assert applier is not None
+    assert applier.name == "geekhunter-form"
+
+
+def test_build_applier_registry_should_skip_a_form_on_a_platform_with_no_applier(tmp_path):
+    # Act
+    applier = build_applier_registry(tmp_path).get("form", "manual")
+
+    # Assert
+    assert applier is None

@@ -29,3 +29,7 @@ class InvalidInputError(JobHunterError):
 
 class SourceError(JobHunterError):
     code = "SOURCE_ERROR"
+
+
+class ApplierError(JobHunterError):
+    code = "APPLIER_ERROR"

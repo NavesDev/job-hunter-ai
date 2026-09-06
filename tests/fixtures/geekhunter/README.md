@@ -14,6 +14,13 @@ No test in this suite reaches the network — see [TESTING.md](../../../docs/TES
 | `listing-empty.html` | a listing that returns no job at all |
 | `job-detail-1.html` … `job-detail-3.html` | job detail pages with their `JobPosting` block |
 | `job-detail-without-json-ld.html` | a detail page whose `JobPosting` block vanished (the site changed shape) |
+| `job-with-form.html` | **not a recording** — a stand-in for the application form |
+
+`job-with-form.html` is the one file here that was written rather than recorded. It
+mirrors the real form — same field names, same required fields, same `accept=".pdf"`, same
+submit label, same confirmation copy — but replaces GeekHunter's Server Action with a few
+lines of local JavaScript. That is what lets the applier be driven end to end, submit
+included, without an application ever leaving the machine.
 
 Re-recording is a manual, deliberate act: it means the platform changed, and the
 diff is the evidence.

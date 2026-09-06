@@ -54,6 +54,11 @@ It never returns an `apply_email` — the platform exposes none.
 | `--subject` | string | no | Subject; defaults to the local configuration |
 | `--all-ready` | flag | no | Applies in batch |
 
+`--method form` on a `geekhunter` job drives the platform's fixed form in a browser,
+using the profile and the settings in `config/local/sources/geekhunter.yaml`. With
+`submit: false` there it fills the form and stops: the result is `status="skipped"`
+with the filled values in `detail`, and nothing is sent.
+
 **Output** (stdout), an `ApplicationResult`:
 
 ```json
@@ -77,12 +82,18 @@ A single JSON object on stderr:
 {"error": "smtp connection refused", "code": "SMTP_ERROR"}
 ```
 
-Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`, `SOURCE_ERROR`. A new code must be documented here before being used.
+Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`, `SOURCE_ERROR`, `APPLIER_ERROR`. A new code must be documented here before being used.
 
 `SOURCE_ERROR` means a source could not deliver its jobs: the platform refused the
 request, or the page no longer has the shape the source parses. It is never a silent
 empty result — a source that finds nothing where it expected jobs raises instead of
 returning `[]`.
+
+`APPLIER_ERROR` means an applier could not complete the attempt on the platform: the
+page no longer has the form it drives, the session expired, or the platform never
+confirmed the application. The attempt is recorded as `status="failed"` before the
+error propagates — an application is never reported as sent without the platform's
+own confirmation.
 
 ## Compatibility
 

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Desenvolvedor(a) .NET Júnior/Pleno em Agenda Digital Ltda.</title>
+<!--
+  A stand-in for a GeekHunter job page, served locally by the test suite.
+
+  The form markup mirrors the real page: same field names, same required fields,
+  same `accept=".pdf"`, same submit label and same confirmation copy. What it does
+  NOT reproduce is GeekHunter's Server Action - the script below just checks the
+  required fields and renders the platform's confirmation text, so the applier can
+  be driven end to end without an application ever leaving the machine.
+-->
+</head>
+<body>
+  <h1>Desenvolvedor(a) .NET Júnior/Pleno</h1>
+  <p>Agenda Digital Ltda.</p>
+
+  <form id="application">
+    <label for="field-name">Nome completo *</label>
+    <input id="field-name" name="name" type="text" placeholder="Seu nome completo">
+
+    <label for="field-email">Email *</label>
+    <input id="field-email" name="email" type="text" value="candidate@example.com" disabled>
+
+    <label for="field-phone">Celular com DDD *</label>
+    <input id="field-phone" name="phone" type="tel">
+
+    <label for="field-linkedin">LinkedIn *</label>
+    <input id="field-linkedin" name="linkedin" type="text"
+           placeholder="https://www.linkedin.com/in/seu-perfil">
+
+    <label for="field-resume">Currículo (CV) *</label>
+    <input id="field-resume" name="resume" type="file" accept=".pdf">
+
+    <label for="field-salary">Remuneração mensal esperada como CLT? *</label>
+    <input id="field-salary" name="salaryExpectation.CLT" type="text" placeholder="R$ 0,00">
+
+    <label><input id="field-terms" type="checkbox"> Li e aceito a Política de Privacidade e os
+      Termos de Uso.</label>
+
+    <button type="submit">Candidatar para a vaga</button>
+  </form>
+
+  <div id="outcome"></div>
+
+  <script>
+    document.getElementById("application").addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target;
+      var missing = ["name", "phone", "linkedin", "salaryExpectation.CLT"].filter(function (field) {
+        return !form.elements[field].value.trim();
+      });
+      if (!form.elements["resume"].files.length) { missing.push("resume"); }
+      if (!document.getElementById("field-terms").checked) { missing.push("terms"); }
+      var outcome = document.getElementById("outcome");
+      if (missing.length) {
+        outcome.textContent = "Preencha os campos obrigatórios: " + missing.join(", ");
+        return;
+      }
+      outcome.innerHTML = "<h2>Candidatura Completa!</h2>" +
+        "<p>Parabéns! Você concluiu sua candidatura para a vaga Desenvolvedor(a) .NET " +
+        "Júnior/Pleno.</p>";
+    });
+  </script>
+</body>
+</html>

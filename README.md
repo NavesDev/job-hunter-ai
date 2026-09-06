@@ -98,6 +98,30 @@ apply-job --job-id manual:d4979b84f109 --method email --email jobs@company.com -
 apply-job --job-id manual:d4979b84f109 --method form
 ```
 
+#### GeekHunter's form
+
+```bash
+pip install -e ".[form]" && playwright install chromium
+apply-job --job-id geekhunter:3b6557006129 --method form
+```
+
+Fills GeekHunter's fixed form from your profile and submits it in a browser
+([ADR-0005](docs/adr/0005-playwright-for-form-appliers.md) explains why a browser).
+Three things are on you, in `config/local/sources/geekhunter.yaml`:
+
+```yaml
+accept_terms: true                               # applying accepts their Terms in your name
+submit: false                                    # fill the form and stop, for a first look
+browser_profile_dir: "config/local/browser-profile"   # a profile you logged in with by hand
+```
+
+The applier never logs in and never touches a password — log in once by hand in that
+profile. The phone, LinkedIn and expected salary come from `candidate.extra_fields`
+(`phone`, `linkedin`, `salary_expectation`); a missing one raises `INVALID_INPUT` **before**
+the browser opens, because an application cannot be un-sent. `status="sent"` is only
+returned when GeekHunter answers with its own confirmation — anything else is `failed`,
+recorded in the history with the reason.
+
 | Flag | Required | Description |
 |---|---|---|
 | `--job-id` | yes (or `--all-ready`) | Job id returned by `list-jobs` |
