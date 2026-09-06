@@ -27,6 +27,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
   `_internship`); the flag names one of them and never carries an amount, so only a figure the
   profile already declares can reach a form. Without the flag, the applier offers the one
   matching the contract type the posting asks for, read from the form field's own name.
+- Applying on GeekHunter needs no credential of any kind: the platform identifies the
+  candidate by email and its form accepts an anonymous application, so the applier fills the
+  address from `candidate.contact_email` when the page has no session, and leaves the field
+  alone when a signed-in browser profile already filled it.
 - Playwright as the optional `form` extra (`pip install -e ".[form]"`), decided in
   [ADR-0005](docs/adr/0005-playwright-for-form-appliers.md) and fenced in by a new
   `import-linter` contract: no layer outside `infra/appliers/` may import it.

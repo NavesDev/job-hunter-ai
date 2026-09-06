@@ -270,3 +270,35 @@ def test_form_applier_should_raise_invalid_input_when_no_salary_is_configured_at
     with pytest.raises(InvalidInputError) as error:
         applier(submit=False).apply(job_at(site), profile)
     assert "salary_expectation" in str(error.value)
+
+
+def test_form_applier_should_fill_the_email_when_the_page_has_no_session(
+    site: str, profile: CandidateProfile
+) -> None:
+    # Arrange
+    subject = applier()  # the stand-in renders the anonymous form: email empty and editable
+
+    # Act
+    result = subject.apply(job_at(site), profile)
+
+    # Assert
+    assert result.status == ApplicationStatus.SENT  # the form refuses to confirm without an email
+
+
+def test_form_applier_should_leave_the_email_alone_when_the_session_already_filled_it(
+    site: str, profile: CandidateProfile
+) -> None:
+    # Arrange
+    job = Job(
+        id="geekhunter:abc123abc123",
+        source="geekhunter",
+        title="Desenvolvedor(a) .NET Júnior/Pleno",
+        company="Agenda Digital Ltda.",
+        url=f"{site}/job-with-form-logged-in.html",
+    )
+
+    # Act
+    result = applier().apply(job, profile)
+
+    # Assert
+    assert result.status == ApplicationStatus.SENT

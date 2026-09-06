@@ -74,6 +74,7 @@ class GeekHunterFormApplier:
             )
         return {
             "name": profile.name.strip(),
+            "email": profile.contact_email.strip(),
             "phone": str(profile.extra_fields["phone"]).strip(),
             "linkedin": str(profile.extra_fields["linkedin"]).strip(),
         }
@@ -144,6 +145,7 @@ class GeekHunterFormApplier:
         if form.count() == 0:
             raise ApplierError(f"no application form on {page.url}; the page changed shape")
         form.locator("input[name='name']").fill(values["name"])
+        self._fill_email(form, values["email"])
         form.locator("input[name='phone']").fill(values["phone"])
         form.locator("input[name='linkedin']").fill(values["linkedin"])
         form.locator("input[type='file']").set_input_files(str(resume))
@@ -152,6 +154,24 @@ class GeekHunterFormApplier:
         if self._submit and checkbox.count() and not checkbox.first.is_checked():
             checkbox.first.check()
         return filled_salary
+
+    def _fill_email(self, form: Any, contact_email: str) -> None:
+        """Only an anonymous page asks for the address: a session fills it and locks the field.
+
+        GeekHunter identifies the candidate by email, so applying needs no login at all —
+        which is exactly why this applier never asks for one.
+        """
+        field = form.locator("input[name='email']")
+        if field.count() == 0 or field.first.is_disabled():
+            return
+        if field.first.input_value().strip():
+            return
+        if not contact_email:
+            raise InvalidInputError(
+                "this page has no GeekHunter session, so the form asks for your email; "
+                "set candidate.contact_email in config/local/config.yaml"
+            )
+        field.first.fill(contact_email)
 
     def _fill_salary(self, form: Any, salaries: dict[str, str], chosen: str | None) -> str:
         """The field name carries the contract type (`salaryExpectation.CLT`, `.PJ`, ...)."""

@@ -115,8 +115,12 @@ submit: false                                    # fill the form and stop, for a
 browser_profile_dir: "config/local/browser-profile"   # a profile you logged in with by hand
 ```
 
-The applier never logs in and never touches a password — log in once by hand in that
-profile. The phone, LinkedIn and the expected salaries come from `candidate.extra_fields`:
+**No GeekHunter password, ever.** The platform identifies a candidate by email, and its
+form accepts an application without a session — so the applier asks for no credential, and
+there is nowhere to put one. Left anonymous, it fills the email from
+`candidate.contact_email`. Point `browser_profile_dir` at a profile **you** signed into by
+hand and the application ties to your existing account instead; the applier still never sees
+the password, and never logs in. The phone, LinkedIn and the expected salaries come from `candidate.extra_fields`:
 
 ```yaml
 candidate:

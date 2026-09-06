@@ -22,7 +22,7 @@
     <input id="field-name" name="name" type="text" placeholder="Seu nome completo">
 
     <label for="field-email">Email *</label>
-    <input id="field-email" name="email" type="text">
+    <input id="field-email" name="email" type="text" value="already@logged-in.example" disabled>
 
     <label for="field-phone">Celular com DDD *</label>
     <input id="field-phone" name="phone" type="tel">
@@ -49,7 +49,7 @@
     document.getElementById("application").addEventListener("submit", function (event) {
       event.preventDefault();
       var form = event.target;
-      var missing = ["name", "email", "phone", "linkedin", "salaryExpectation.CLT"].filter(function (field) {
+      var missing = ["name", "phone", "linkedin", "salaryExpectation.CLT"].filter(function (field) {
         return !form.elements[field].value.trim();
       });
       if (!form.elements["resume"].files.length) { missing.push("resume"); }
