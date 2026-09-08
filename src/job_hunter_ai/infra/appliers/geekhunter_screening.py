@@ -135,3 +135,19 @@ def _option(question: dict[str, Any], identifier: str, text: str) -> str:
             f"it offers: {', '.join(options)}"
         )
     return text
+
+
+def ordered(questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The questions in the order the platform asks them, which is how it renders them."""
+    return sorted(
+        questions, key=lambda question: (question.get("order") or 0, str(question.get("id")))
+    )
+
+
+def is_yes_no(question: dict[str, Any]) -> bool:
+    return str(question.get("answerType") or "").lower() == BOOLEAN
+
+
+def radio_value(answer: str) -> str:
+    """The value GeekHunter puts on the radio itself: `true` for Sim, `false` for Não."""
+    return "true" if answer == BOOLEAN_VALUES["sim"] else "false"

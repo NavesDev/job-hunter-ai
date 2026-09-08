@@ -76,7 +76,7 @@ class GeekHunterFormApplier:
         self._checked_consent()
         questions = screening.asked(job.raw)
         answers = self._checked_answers(questions, options.get("answers"))
-        filled = self._drive(url, values, resume, salaries, chosen, answers)
+        filled = self._drive(url, values, resume, salaries, chosen, questions, answers)
         return self._result(job, filled)
 
     def _who(self) -> str:
@@ -159,6 +159,7 @@ class GeekHunterFormApplier:
         resume: Path,
         salaries: dict[str, str],
         chosen: str | None,
+        questions: list[dict[str, Any]],
         answers: dict[str, str],
     ) -> dict[str, str]:
         from playwright.sync_api import Error as PlaywrightError
@@ -173,7 +174,7 @@ class GeekHunterFormApplier:
                 self._signed_in = self._sign_in_if_anonymous(page, url)
                 values["salary"] = self._fill(page, values, resume, salaries, chosen)
                 if self._submit:
-                    self._submit_and_confirm(page, url, values, answers)
+                    self._submit_and_confirm(page, url, values, questions, answers)
             except PlaywrightError as exc:
                 # Keep the page before the browser closes: a timeout says which locator
                 # gave up, never what the page had become.
@@ -338,7 +339,12 @@ class GeekHunterFormApplier:
         return ", ".join(f"{contract}={value}" for contract, value in filled.items())
 
     def _submit_and_confirm(
-        self, page: Any, url: str, values: dict[str, str], answers: dict[str, str]
+        self,
+        page: Any,
+        url: str,
+        values: dict[str, str],
+        questions: list[dict[str, Any]],
+        answers: dict[str, str],
     ) -> None:
         """Wait for the platform's own word, and tell the two answers it can give apart.
 
@@ -357,7 +363,7 @@ class GeekHunterFormApplier:
                 self._awaiting_email = True
                 return
             if diagnostics.is_showing(screen):
-                self._answer_screening(page, url, answers)
+                self._answer_screening(page, url, questions, answers)
                 return self._confirmed(page, url, values)
             page.wait_for_timeout(_POLL_MS)
         raise ApplierError(diagnostics.unconfirmed(page, url, values, self._diagnostics_dir))
@@ -380,7 +386,9 @@ class GeekHunterFormApplier:
             diagnostics.is_showing(page.get_by_text(text).first) for text in CONFIRMATION_TEXTS
         )
 
-    def _answer_screening(self, page: Any, url: str, answers: dict[str, str]) -> None:
+    def _answer_screening(
+        self, page: Any, url: str, questions: list[dict[str, Any]], answers: dict[str, str]
+    ) -> None:
         """Type the answers the caller gave, and refuse to submit a question left blank.
 
         Nothing is invented for a field the page shows and `--answer` did not cover: a
@@ -390,33 +398,58 @@ class GeekHunterFormApplier:
         if not answers:
             raise ApplierError(diagnostics.screening(page, url, self._diagnostics_dir))
         dialog = page.locator(SCREENING_DIALOG).last
-        for identifier, answer in answers.items():
-            self._answer_one(page, dialog, url, identifier, answer)
+        groups = _radio_groups(dialog)
+        asked = screening.ordered(questions) or [
+            {"id": identifier, "answerType": "text"} for identifier in answers
+        ]
+        yes_no = 0
+        for question in asked:
+            identifier = str(question.get("id"))
+            answer = answers.get(identifier)
+            if screening.is_yes_no(question):
+                # The radios carry a generated name, not the question's id: the only
+                # thing tying one group to one question is the order they are asked in.
+                group = groups[yes_no] if yes_no < len(groups) else None
+                yes_no += 1
+                if answer is not None:
+                    self._pick(page, dialog, url, identifier, answer, group)
+            elif answer is not None:
+                self._type(page, dialog, url, identifier, answer)
         self._accept_screening_consent(dialog)
         dialog.locator(SUBMIT_SELECTOR).last.click()
 
-    def _answer_one(self, page: Any, dialog: Any, url: str, identifier: str, answer: str) -> None:
-        """Type the answer, or pick it — the widget depends on what the question asks.
-
-        A question with a written answer carries a field named after its own id; a yes/no
-        or multiple-choice one is a set of controls labelled with the answers themselves.
-        """
+    def _type(self, page: Any, dialog: Any, url: str, identifier: str, answer: str) -> None:
+        """A written answer goes in the field the question names after its own id."""
         field = dialog.locator(f"[name='{identifier}']").first
-        if diagnostics.is_showing(field):
-            try:
-                field.fill(answer, timeout=_WIDGET_MS)
-                return
-            except Exception:
-                pass  # named, but not something you type into: it is a choice
-        option = dialog.get_by_text(answer, exact=True).last
-        if not diagnostics.is_showing(option):
+        if not diagnostics.is_showing(field):
+            raise ApplierError(self._lost_question(page, url, identifier))
+        field.fill(answer)
+
+    def _pick(
+        self, page: Any, dialog: Any, url: str, identifier: str, answer: str, group: str | None
+    ) -> None:
+        """A yes/no answer is a radio, clipped to a pixel like every control on this form."""
+        if group is None:
+            raise ApplierError(self._lost_question(page, url, identifier))
+        radio = dialog.locator(
+            f"input[type='radio'][name='{group}'][value='{screening.radio_value(answer)}']"
+        ).first
+        if radio.count() == 0:
+            raise ApplierError(self._lost_question(page, url, identifier))
+        radio.dispatch_event("click")
+        if not radio.is_checked():
             raise ApplierError(
-                f"geekhunter asks a screening question this page neither names as "
-                f"`{identifier}` nor offers `{answer}` for; the questions changed shape and "
-                f"nothing was answered. "
-                f"{diagnostics.saved_page(page, url, self._diagnostics_dir)}"
+                f"could not answer `{answer}` to the screening question `{identifier}`; "
+                f"the question changed shape and an application must never go out with a "
+                f"blank answer. {diagnostics.saved_page(page, url, self._diagnostics_dir)}"
             )
-        option.click()
+
+    def _lost_question(self, page: Any, url: str, identifier: str) -> str:
+        return (
+            f"geekhunter asks a screening question this page does not offer a control for "
+            f"(`{identifier}`); the questions changed shape and nothing was answered. "
+            f"{diagnostics.saved_page(page, url, self._diagnostics_dir)}"
+        )
 
     def _accept_screening_consent(self, dialog: Any) -> None:
         """The screening screen asks its own consent, about sensitive data.
@@ -459,6 +492,18 @@ class GeekHunterFormApplier:
             detail=f"geekhunter confirmed the application for `{job.title}`, as {self._who()}",
             applied_at=utc_now(),
         )
+
+
+def _radio_groups(dialog: Any) -> list[str]:
+    """The radio group names the dialog renders, in the order the questions are asked."""
+    try:
+        groups = dialog.evaluate(
+            "node => [...new Set([...node.querySelectorAll(\"input[type='radio']\")]"
+            ".map(radio => radio.name))]"
+        )
+    except Exception:
+        return []
+    return [str(name) for name in groups or []]
 
 
 def _signed_in_on(page: Any) -> bool:

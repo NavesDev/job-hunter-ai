@@ -333,11 +333,13 @@ QUESTIONS = [
     {
         "id": 142140,
         "name": "Você aceita trabalhar presencialmente?",
-        "answerType": "boolean",
+        "answerType": "text",
         "mandatory": True,
         "options": None,
     },
 ]
+# The same pair as the platform renders it when the second answer is a yes/no.
+CHOICE_QUESTIONS = [QUESTIONS[0], {**QUESTIONS[1], "answerType": "boolean"}]
 ANSWERS = {"142139": "2", "142140": "sim"}
 
 
@@ -614,11 +616,32 @@ def test_form_applier_should_pick_a_yes_no_screening_answer_instead_of_typing_it
         title=job.title,
         company=job.company,
         url=job.url,
-        raw={"screeningQuestions": QUESTIONS},
+        raw={"screeningQuestions": CHOICE_QUESTIONS},
     )
 
     # Act
     result = subject.apply(job, profile, answers=ANSWERS)
+
+    # Assert
+    assert result.status is ApplicationStatus.SENT
+
+
+def test_form_applier_should_answer_each_question_in_its_own_control(site, profile):
+    """Two yes/no questions render two radio groups; answering both in one is not answering."""
+    # Arrange
+    subject = applier(timeout_ms=8000)
+    page = job_page(site, "job-with-form-screening-choice.html")
+    job = Job(
+        id=page.id,
+        source=page.source,
+        title=page.title,
+        company=page.company,
+        url=page.url,
+        raw={"screeningQuestions": CHOICE_QUESTIONS},
+    )
+
+    # Act
+    result = subject.apply(job, profile, answers={"142139": "2", "142140": "não"})
 
     # Assert
     assert result.status is ApplicationStatus.SENT

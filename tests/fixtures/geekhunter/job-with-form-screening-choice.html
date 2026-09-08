@@ -117,8 +117,12 @@
           "<p>Quantos anos de experiência em/com .NET você tem?</p>" +
           "<input name=\"142139\" type=\"number\" />" +
           "<p>Você aceita trabalhar presencialmente?</p>" +
-          "<label><input type=\"radio\" name=\"142140\" value=\"Sim\" />Sim</label>" +
-          "<label><input type=\"radio\" name=\"142140\" value=\"Não\" />Não</label>" +
+          // The real dialog names its radios after nothing: a generated id, values
+          // true/false, and the input itself clipped to a single pixel.
+          "<label><input type=\"radio\" name=\"radio-_r_k_\" value=\"true\"" +
+          " style=\"clip:rect(0,0,0,0);width:1px;height:1px\" />Sim</label>" +
+          "<label><input type=\"radio\" name=\"radio-_r_k_\" value=\"false\"" +
+          " style=\"clip:rect(0,0,0,0);width:1px;height:1px\" />Não</label>" +
           "<label><input id=\"screening-consent\" type=\"checkbox\" />Estou ciente de que meus " +
           "dados, inclusive sensíveis, podem ser tratados para fins de recrutamento.</label>" +
           "<button type=\"submit\">Finalizar candidatura</button>" +
@@ -137,7 +141,7 @@
       var unanswered = [];
       var written = document.getElementsByName("142139")[0];
       if (!written || !written.value.trim()) { unanswered.push("142139"); }
-      var picked = document.querySelector("input[name='142140']:checked");
+      var picked = document.querySelector("input[name='radio-_r_k_']:checked");
       if (!picked) { unanswered.push("142140"); }
       if (unanswered.length) {
         outcome.textContent = "Essa pergunta é obrigatória. Responda para continuar.";
