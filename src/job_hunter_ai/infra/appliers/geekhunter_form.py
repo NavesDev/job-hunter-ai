@@ -24,6 +24,7 @@ from job_hunter_ai.infra.appliers import geekhunter_salary as salary
 FORM_SELECTOR = "form:has(input[name='name'])"
 SUBMIT_SELECTOR = "button[type='submit']"
 CONFIRMATION_TEXT = "Candidatura Completa"
+RESUME_UPLOADED_TEXT = "carregado com sucesso"
 SALARY_FIELD_PREFIX = "salaryExpectation"
 REQUIRED_EXTRA_FIELDS = ("phone", "linkedin")
 DEFAULT_TIMEOUT_MS = 30_000
@@ -144,22 +145,86 @@ class GeekHunterFormApplier:
         form = page.locator(FORM_SELECTOR)
         if form.count() == 0:
             raise ApplierError(f"no application form on {page.url}; the page changed shape")
+        # The resume goes first: uploading it re-renders the form and wipes whatever was
+        # typed before, so filling the fields first would submit an empty application.
+        self._upload_resume(page, form, resume)
         form.locator("input[name='name']").fill(values["name"])
         self._fill_email(form, values["email"])
-        form.locator("input[name='phone']").fill(values["phone"])
+        self._fill_phone(form, values["phone"])
         form.locator("input[name='linkedin']").fill(values["linkedin"])
-        form.locator("input[type='file']").set_input_files(str(resume))
         filled_salary = self._fill_salary(form, salaries, chosen)
         checkbox = form.locator("input[type='checkbox']")
         if self._submit and checkbox.count() and not checkbox.first.is_checked():
-            checkbox.first.check()
+            # The terms box is a design-system checkbox: the real input is clipped to a
+            # single pixel behind a styled control, so `check()` never settles on it and
+            # even a forced click lands on whatever covers that pixel. Dispatching the
+            # event on the element itself reaches the input the form actually reads.
+            checkbox.first.dispatch_event("click")
+            if not checkbox.first.is_checked():
+                raise ApplierError(
+                    "could not tick the terms checkbox; the form changed shape and an "
+                    "application must never go out without it"
+                )
+        self._checked_form(form, values)
         return filled_salary
+
+    def _upload_resume(self, page: Any, form: Any, resume: Path) -> None:
+        """Attach the file and wait for the upload the platform runs behind it.
+
+        The page hydrates after it loads, and a file dropped on the input before that
+        happens reaches no handler at all — silently, with the form still asking for a
+        resume. Settling the network first is what makes the attachment stick.
+        """
+        page.wait_for_load_state("networkidle")
+        form.locator("input[type='file']").set_input_files(str(resume))
+        try:
+            page.get_by_text(RESUME_UPLOADED_TEXT).first.wait_for(timeout=self._timeout_ms)
+        except Exception as exc:
+            raise ApplierError(
+                f"geekhunter never took the resume at {resume}; "
+                "an application must never go out without it"
+            ) from exc
+
+    def _fill_phone(self, form: Any, phone: str) -> None:
+        """The field carries a mask and its own country code, and ignores a set value.
+
+        Typing is the only input the mask reads, and the digits it already shows are the
+        country code it adds itself — sending them again shifts the whole number.
+        """
+        field = form.locator("input[name='phone']").first
+        already = _digits(field.input_value())
+        digits = _digits(phone)
+        if already and digits.startswith(already):
+            digits = digits[len(already) :]
+        field.fill("")
+        field.press_sequentially(digits, delay=20)
+
+    def _checked_form(self, form: Any, values: dict[str, str]) -> None:
+        """Nothing goes out half-filled: what the form holds must be what was asked for."""
+        empty = [
+            field
+            for field in ("name", "email", "phone", "linkedin")
+            if not _digits_or_text(form, field)
+        ]
+        if empty:
+            raise ApplierError(
+                f"the form dropped the values for {', '.join(empty)} before submitting; "
+                "an application must never go out incomplete"
+            )
+        typed = _digits(form.locator("input[name='phone']").first.input_value())
+        if _digits(values["phone"]) not in typed and typed not in _digits(values["phone"]):
+            raise ApplierError(
+                f"the form holds the phone as `{typed}`, not `{_digits(values['phone'])}`; "
+                "an application must never go out with the wrong number"
+            )
 
     def _fill_email(self, form: Any, contact_email: str) -> None:
         """Only an anonymous page asks for the address: a session fills it and locks the field.
 
         GeekHunter identifies the candidate by email, so applying needs no login at all —
-        which is exactly why this applier never asks for one.
+        which is exactly why this applier never asks for one. The anonymous form asks for
+        the address twice and refuses to submit until both match, so the confirmation
+        field is filled from the same value.
         """
         field = form.locator("input[name='email']")
         if field.count() == 0 or field.first.is_disabled():
@@ -172,6 +237,9 @@ class GeekHunterFormApplier:
                 "set candidate.contact_email in config/local/config.yaml"
             )
         field.first.fill(contact_email)
+        confirmation = form.locator("input[name='confirmEmail']")
+        if confirmation.count():
+            confirmation.first.fill(contact_email)
 
     def _fill_salary(self, form: Any, salaries: dict[str, str], chosen: str | None) -> str:
         """The field name carries the contract type (`salaryExpectation.CLT`, `.PJ`, ...)."""
@@ -213,6 +281,15 @@ class GeekHunterFormApplier:
             detail=f"geekhunter confirmed the application for `{job.title}`",
             applied_at=utc_now(),
         )
+
+
+def _digits(value: str) -> str:
+    return "".join(character for character in value if character.isdigit())
+
+
+def _digits_or_text(form: Any, field: str) -> str:
+    locator = form.locator(f"input[name='{field}']")
+    return locator.first.input_value().strip() if locator.count() else ""
 
 
 def _summary(values: dict[str, str]) -> str:

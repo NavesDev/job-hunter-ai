@@ -25,7 +25,7 @@
     <input id="field-email" name="email" type="text" value="already@logged-in.example" disabled>
 
     <label for="field-phone">Celular com DDD *</label>
-    <input id="field-phone" name="phone" type="tel">
+    <input id="field-phone" name="phone" type="tel" value="+55">
 
     <label for="field-linkedin">LinkedIn *</label>
     <input id="field-linkedin" name="linkedin" type="text"
@@ -33,11 +33,15 @@
 
     <label for="field-resume">Currículo (CV) *</label>
     <input id="field-resume" name="resume" type="file" accept=".pdf">
+    <p id="upload-state"></p>
 
     <label for="field-salary">Remuneração mensal esperada como CLT? *</label>
     <input id="field-salary" name="salaryExpectation.CLT" type="text" placeholder="R$ 0,00">
 
-    <label><input id="field-terms" type="checkbox"> Li e aceito a Política de Privacidade e os
+    <!-- The platform hides the real input behind a styled control, as its design
+         system does: it is one clipped pixel, and never actionable to a click. -->
+    <input id="field-terms" type="checkbox" style="border:0;clip:rect(0, 0, 0, 0);height:1px;width:1px;margin:-1px;padding:0;overflow:hidden;white-space:nowrap;position:absolute">
+    <label for="field-terms">Li e aceito a Política de Privacidade e os
       Termos de Uso.</label>
 
     <button type="submit">Candidatar para a vaga</button>
@@ -46,12 +50,48 @@
   <div id="outcome"></div>
 
   <script>
+    // The platform uploads the resume on its own and re-renders the form when it lands,
+    // which drops every value typed before it. A field the session owns keeps its value.
+    // Reproduced here so the suite catches an applier that fills the fields first and
+    // submits an empty application.
+    document.getElementById("field-resume").addEventListener("change", function () {
+      window.setTimeout(function () {
+        var form = document.getElementById("application");
+        Array.prototype.forEach.call(form.querySelectorAll("input[type='text']"),
+          function (field) { if (!field.disabled) { field.value = ""; } });
+        document.getElementById("field-phone").value = "+55";
+        document.getElementById("upload-state").textContent =
+          "O arquivo foi carregado com sucesso";
+      }, 50);
+    });
+
+    // The phone field is masked and adds the country code itself. A mask reads keystrokes,
+    // not an assigned value, so a programmatic fill is reverted here exactly as it is there.
+    (function () {
+      var phone = document.getElementById("field-phone");
+      var typed = false;
+      var last = phone.value;
+      phone.addEventListener("keydown", function () { typed = true; });
+      phone.addEventListener("input", function () {
+        if (!typed) { phone.value = last; return; }
+        var digits = phone.value.replace(/\D/g, "");
+        if (digits.indexOf("55") !== 0) { digits = "55" + digits; }
+        var national = digits.slice(2);
+        phone.value = national
+          ? "+55 (" + national.slice(0, 2) + ") " + national.slice(2)
+          : "+55";
+        last = phone.value;
+        typed = false;
+      });
+    })();
+
     document.getElementById("application").addEventListener("submit", function (event) {
       event.preventDefault();
       var form = event.target;
-      var missing = ["name", "phone", "linkedin", "salaryExpectation.CLT"].filter(function (field) {
+      var missing = ["name", "linkedin", "salaryExpectation.CLT"].filter(function (field) {
         return !form.elements[field].value.trim();
       });
+      if (form.elements["phone"].value.replace(/\D/g, "").length < 12) { missing.push("phone"); }
       if (!form.elements["resume"].files.length) { missing.push("resume"); }
       if (!document.getElementById("field-terms").checked) { missing.push("terms"); }
       var outcome = document.getElementById("outcome");
