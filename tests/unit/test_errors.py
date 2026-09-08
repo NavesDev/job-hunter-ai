@@ -11,6 +11,7 @@ from job_hunter_ai.domain import errors
         (errors.JobNotFoundError, "JOB_NOT_FOUND"),
         (errors.SmtpError, "SMTP_ERROR"),
         (errors.InvalidInputError, "INVALID_INPUT"),
+        (errors.ResumeError, "RESUME_ERROR"),
     ],
 )
 def test_domain_error_should_carry_documented_code_when_raised(error_class, expected_code):

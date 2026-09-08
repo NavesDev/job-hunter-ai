@@ -45,3 +45,9 @@ class SessionError(JobHunterError):
 
 class ApplierError(JobHunterError):
     code = "APPLIER_ERROR"
+
+
+class ResumeError(JobHunterError):
+    """A résumé file that exists but yields nothing a screening robot could read."""
+
+    code = "RESUME_ERROR"
