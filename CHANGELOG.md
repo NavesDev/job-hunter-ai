@@ -6,6 +6,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ### Fixed
 
+- `apply-job --method form` no longer reports an unconfirmed application without saying why.
+  The error now quotes the text the page ended on, names the URL, and keeps the page under
+  `diagnostics_dir` (`config/local/diagnostics`) — the candidate's own values scrubbed from
+  the quote. Nothing is re-submitted automatically.
+
 - `list-jobs --source geekhunter` no longer fails when the listing is shorter than the run
   asked for. GeekHunter answers `404` past the last page instead of an empty one, which is
   the end of the listing and not a failure: the source now returns what it collected. A `404`

@@ -28,6 +28,8 @@ RESUME_UPLOADED_TEXT = "carregado com sucesso"
 SALARY_FIELD_PREFIX = "salaryExpectation"
 REQUIRED_EXTRA_FIELDS = ("phone", "linkedin")
 DEFAULT_TIMEOUT_MS = 30_000
+DEFAULT_DIAGNOSTICS_DIR = Path("config/local/diagnostics")
+SNIPPET_LIMIT = 320
 
 
 class GeekHunterFormApplier:
@@ -42,6 +44,7 @@ class GeekHunterFormApplier:
         self._headless = bool(settings.get("headless", True))
         self._timeout_ms = int(settings.get("timeout_ms", DEFAULT_TIMEOUT_MS))
         self._profile_dir = settings.get("browser_profile_dir")
+        self._diagnostics_dir = Path(settings.get("diagnostics_dir") or DEFAULT_DIAGNOSTICS_DIR)
 
     def apply(self, job: Job, profile: CandidateProfile, **options: Any) -> ApplicationResult:
         url = self._checked_url(job)
@@ -119,7 +122,7 @@ class GeekHunterFormApplier:
                     page.goto(url, wait_until="domcontentloaded")
                     values["salary"] = self._fill(page, values, resume, salaries, chosen)
                     if self._submit:
-                        self._submit_and_confirm(page, url)
+                        self._submit_and_confirm(page, url, values)
                 finally:
                     context.close()
         except PlaywrightError as exc:
@@ -251,15 +254,56 @@ class GeekHunterFormApplier:
         field.first.fill(value)
         return value
 
-    def _submit_and_confirm(self, page: Any, url: str) -> None:
+    def _submit_and_confirm(self, page: Any, url: str, values: dict[str, str]) -> None:
         page.locator(SUBMIT_SELECTOR).first.click()
         try:
             page.get_by_text(CONFIRMATION_TEXT).first.wait_for(timeout=self._timeout_ms)
         except Exception as exc:
-            raise ApplierError(
-                f"geekhunter never confirmed the application for {url}; "
-                "the attempt may or may not have gone through"
-            ) from exc
+            raise ApplierError(self._unconfirmed(page, url, values)) from exc
+
+    def _unconfirmed(self, page: Any, url: str, values: dict[str, str]) -> str:
+        """Say what the platform answered instead, so the next run is not blind.
+
+        `Candidatura Completa` missing means one of two very different things — the form
+        was refused, or it went through and said so differently — and the message alone
+        could never tell them apart. What the page became is the evidence, so it is
+        quoted here and kept on disk.
+        """
+        return " ".join(
+            part
+            for part in (
+                f"geekhunter never confirmed the application for {url};",
+                "the attempt may or may not have gone through.",
+                self._what_the_page_said(page, values),
+                self._saved_page(page, url),
+            )
+            if part
+        )
+
+    def _what_the_page_said(self, page: Any, values: dict[str, str]) -> str:
+        """The visible text the page ended on, with the candidate's own values taken out."""
+        try:
+            text = " ".join(str(page.locator("body").first.inner_text()).split())
+            where = str(page.url)
+        except Exception:
+            return ""  # a page that cannot even be read must not mask the original failure
+        for value in values.values():
+            if value:
+                text = text.replace(value, "…")
+        if not text:
+            return f"it ended on {where}, with no visible text."
+        return f"it ended on {where}, saying `{_both_ends(text)}`."
+
+    def _saved_page(self, page: Any, url: str) -> str:
+        """Keep the page itself next to the message: a snippet is rarely the whole story."""
+        stamp = utc_now().strftime("%Y%m%dT%H%M%SZ")
+        target = self._diagnostics_dir / f"unconfirmed-{stamp}.html"
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(f"<!-- {url} -->\n{page.content()}", encoding="utf-8")
+        except Exception:
+            return ""  # diagnostics are a courtesy; failing to write one changes nothing
+        return f"the page as it was is in {target}."
 
     # --- the outcome ---
 
@@ -281,6 +325,19 @@ class GeekHunterFormApplier:
             detail=f"geekhunter confirmed the application for `{job.title}`",
             applied_at=utc_now(),
         )
+
+
+def _both_ends(text: str) -> str:
+    """Keep the start and the end of the page text: the answer sits at one of them.
+
+    A page that replaced itself says what happened up top; a page that only appended a
+    message under the form it kept says it at the very bottom. Quoting one end alone
+    would lose that answer half the time.
+    """
+    if len(text) <= SNIPPET_LIMIT:
+        return text
+    half = SNIPPET_LIMIT // 2
+    return f"{text[:half]} […] {text[-half:]}"
 
 
 def _digits(value: str) -> str:

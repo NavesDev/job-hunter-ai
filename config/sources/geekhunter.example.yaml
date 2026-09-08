@@ -43,6 +43,10 @@ submit: true
 # and never handles a password: log in once by hand in this profile.
 # browser_profile_dir: "config/local/browser-profile"
 
+# Where an application the platform never confirmed is kept, page and all, so the next run
+# is not blind. Nothing else is ever written there.
+diagnostics_dir: "config/local/diagnostics"
+
 # false opens a visible window — useful while you are watching it fill the form.
 headless: true
 timeout_ms: 30000

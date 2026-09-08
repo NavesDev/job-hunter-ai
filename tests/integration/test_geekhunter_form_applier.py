@@ -302,3 +302,53 @@ def test_form_applier_should_leave_the_email_alone_when_the_session_already_fill
 
     # Assert
     assert result.status == ApplicationStatus.SENT
+
+
+def unconfirmed_job_at(site: str) -> Job:
+    job = job_at(site)
+    return Job(
+        id=job.id,
+        source=job.source,
+        title=job.title,
+        company=job.company,
+        url=f"{site}/job-with-form-unconfirmed.html",
+    )
+
+
+def test_form_applier_should_quote_what_the_page_said_when_it_never_confirms(
+    site, profile, tmp_path
+):
+    # Arrange
+    subject = applier(diagnostics_dir=str(tmp_path / "diagnostics"), timeout_ms=2000)
+
+    # Act / Assert
+    with pytest.raises(ApplierError) as error:
+        subject.apply(unconfirmed_job_at(site), profile)
+    assert "Falha ao enviar sua candidatura" in str(error.value)
+    assert "may or may not have gone through" in str(error.value)
+
+
+def test_form_applier_should_keep_the_unconfirmed_page_on_disk(site, profile, tmp_path):
+    # Arrange
+    diagnostics = tmp_path / "diagnostics"
+    subject = applier(diagnostics_dir=str(diagnostics), timeout_ms=2000)
+
+    # Act
+    with pytest.raises(ApplierError):
+        subject.apply(unconfirmed_job_at(site), profile)
+
+    # Assert
+    saved = list(diagnostics.glob("unconfirmed-*.html"))
+    assert len(saved) == 1
+    assert "Falha ao enviar sua candidatura" in saved[0].read_text(encoding="utf-8")
+
+
+def test_form_applier_should_never_put_the_candidates_values_in_the_error(site, profile, tmp_path):
+    # Arrange
+    subject = applier(diagnostics_dir=str(tmp_path / "diagnostics"), timeout_ms=2000)
+
+    # Act / Assert
+    with pytest.raises(ApplierError) as error:
+        subject.apply(unconfirmed_job_at(site), profile)
+    assert profile.contact_email not in str(error.value)
+    assert profile.extra_fields["phone"] not in str(error.value)

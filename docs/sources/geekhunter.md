@@ -89,6 +89,13 @@ browser_profile_dir: "config/local/browser-profile"   # a profile you logged int
 `detail`, nothing sent. `status="sent"` is returned only when GeekHunter answers with its
 own confirmation; anything else is `failed`, recorded in the history with the reason.
 
+When the confirmation never arrives, the attempt is genuinely ambiguous — the form may have
+been refused, or accepted and answered differently — so `APPLIER_ERROR` quotes the text the
+page ended on, names the URL it ended at, and keeps the page itself under `diagnostics_dir`
+(`config/local/diagnostics` by default). The candidate's own values are taken out of the
+quoted text. Nothing is ever re-submitted automatically: a second run is a second
+application, and that call is yours.
+
 **No GeekHunter password, ever.** The platform identifies a candidate by email and its form
 accepts an anonymous application, so the applier asks for no credential and there is nowhere
 to put one. Left anonymous, it fills the address from `candidate.contact_email`. Point
