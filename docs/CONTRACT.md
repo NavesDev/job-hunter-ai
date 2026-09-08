@@ -21,7 +21,7 @@ The input/output contract every script (`list-jobs`, `apply-job`, and any new co
 | `--filter` | `name=value`, repeatable | no | Listing filter (`geekhunter` source) |
 
 The `geekhunter` source is filtered by `config/local/sources/geekhunter.yaml`
-(see the [README](../README.md#geekhunter)). Every `--filter name=value` given
+(see [docs/sources/geekhunter.md](sources/geekhunter.md)). Every `--filter name=value` given
 **replaces** that whole `filters:` mapping for the run — the two are never merged.
 An unknown filter name or value, or an argument that is not a `name=value` pair,
 raises `INVALID_INPUT` before any request goes out. The `manual` source takes no
@@ -65,7 +65,8 @@ declares (`candidate.extra_fields.salary_expectation_clt`, `_pj`, `_internship`)
 it, the applier offers the one matching the contract type the posting asks for.
 
 `--method form` on a `geekhunter` job drives the platform's fixed form in a browser,
-using the profile and the settings in `config/local/sources/geekhunter.yaml`. With
+using the profile and the settings in `config/local/sources/geekhunter.yaml`
+(see [docs/sources/geekhunter.md](sources/geekhunter.md)). With
 `submit: false` there it fills the form and stops: the result is `status="skipped"`
 with the filled values in `detail`, and nothing is sent.
 

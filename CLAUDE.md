@@ -22,6 +22,7 @@ test (the suites run on recorded fixtures and a local server).
 | [docs/TESTING.md](docs/TESTING.md) | AAA pattern, fakes vs mocks, test layout |
 | [docs/CONTRACT.md](docs/CONTRACT.md) | CLI input/output — stdout, stderr, exit codes |
 | [docs/DATA_MODEL.md](docs/DATA_MODEL.md) | SQLite schema, job ids, dedup, migrations |
+| [docs/sources/geekhunter.md](docs/sources/geekhunter.md) | The GeekHunter platform: filters, settings, failure modes |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Branch names, commit scopes, PR flow |
 
 ## Engineering principles

@@ -96,7 +96,8 @@ The source needs no login and reads only public pages. It identifies itself by
 user-agent and paces itself to one request per second — collecting `n` jobs costs
 `ceil(n / 10)` listing requests plus one detail request per job. Jobs come back with
 `apply_email: null`, because the platform exposes no address; applying goes through
-its form. The design behind all of this is in
+its form. Every filter, setting and failure mode is in
+[docs/sources/geekhunter.md](docs/sources/geekhunter.md); the design behind them is in
 [the spec](docs/superpowers/specs/2026-09-05-geekhunter-source-design.md).
 
 Output: JSON on stdout, a list of normalized jobs (`id`, `source`, `title`, `company`, `description`, `url`, `apply_email`, `raw`, `collected_at`). Every run stores and deduplicates into the local SQLite database — stable ids, no duplicates across runs ([DATA_MODEL.md](docs/DATA_MODEL.md)). Errors go to stderr as `{"error": ..., "code": ...}` with a non-zero exit code ([CONTRACT.md](docs/CONTRACT.md)).
@@ -116,7 +117,8 @@ apply-job --job-id geekhunter:3b6557006129 --method form
 ```
 
 Fills GeekHunter's fixed form from your profile and submits it in a browser
-([ADR-0005](docs/adr/0005-playwright-for-form-appliers.md) explains why a browser).
+([ADR-0005](docs/adr/0005-playwright-for-form-appliers.md) explains why a browser;
+[docs/sources/geekhunter.md](docs/sources/geekhunter.md) collects the whole platform).
 Three things are on you, in `config/local/sources/geekhunter.yaml`:
 
 ```yaml

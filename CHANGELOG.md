@@ -20,6 +20,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
   `config/local/sources/geekhunter.yaml` instead of merging with it. Values go through the
   same validation as the YAML ones, so an unknown name or value raises `INVALID_INPUT` before
   any request goes out ([CONTRACT.md](docs/CONTRACT.md#list-jobs)).
+- [docs/sources/geekhunter.md](docs/sources/geekhunter.md): the whole GeekHunter platform on
+  one page — collecting, filters, applying through the form, HTTP settings and what a
+  `SOURCE_ERROR` means. The README and `CONTRACT.md` now point at it.
 - `SOURCE_ERROR`, a new contract error code: a source could not deliver its jobs because the
   platform refused the request or the page changed shape. A source never returns an empty list
   where it expected jobs ([CONTRACT.md](docs/CONTRACT.md#errors-any-command)).
