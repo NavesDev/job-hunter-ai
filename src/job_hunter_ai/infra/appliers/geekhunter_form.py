@@ -41,6 +41,7 @@ REQUIRED_EXTRA_FIELDS = ("phone", "linkedin")
 DEFAULT_TIMEOUT_MS = 30_000
 DEFAULT_DIAGNOSTICS_DIR = Path("config/local/diagnostics")
 _POLL_MS = 250
+_WIDGET_MS = 2_000
 
 
 class GeekHunterFormApplier:
@@ -163,21 +164,25 @@ class GeekHunterFormApplier:
         from playwright.sync_api import Error as PlaywrightError
         from playwright.sync_api import sync_playwright
 
-        try:
-            with sync_playwright() as playwright:
-                context = self._context(playwright)
+        with sync_playwright() as playwright:
+            context = self._context(playwright)
+            try:
                 page = context.new_page()
                 page.set_default_timeout(self._timeout_ms)
-                try:
-                    page.goto(url, wait_until="domcontentloaded")
-                    self._signed_in = self._sign_in_if_anonymous(page, url)
-                    values["salary"] = self._fill(page, values, resume, salaries, chosen)
-                    if self._submit:
-                        self._submit_and_confirm(page, url, values, answers)
-                finally:
-                    context.close()
-        except PlaywrightError as exc:
-            raise ApplierError(f"could not apply through {url}: {_first_line(exc)}") from exc
+                page.goto(url, wait_until="domcontentloaded")
+                self._signed_in = self._sign_in_if_anonymous(page, url)
+                values["salary"] = self._fill(page, values, resume, salaries, chosen)
+                if self._submit:
+                    self._submit_and_confirm(page, url, values, answers)
+            except PlaywrightError as exc:
+                # Keep the page before the browser closes: a timeout says which locator
+                # gave up, never what the page had become.
+                kept = diagnostics.saved_page(page, url, self._diagnostics_dir)
+                raise ApplierError(
+                    f"could not apply through {url}: {_first_line(exc)}. {kept}".strip()
+                ) from exc
+            finally:
+                context.close()
         return values
 
     def _sign_in_if_anonymous(self, page: Any, url: str) -> bool:
@@ -386,17 +391,32 @@ class GeekHunterFormApplier:
             raise ApplierError(diagnostics.screening(page, url, self._diagnostics_dir))
         dialog = page.locator(SCREENING_DIALOG).last
         for identifier, answer in answers.items():
-            # The screening field carries the question's own id as its name.
-            field = dialog.locator(f"[name='{identifier}']").first
-            if not diagnostics.is_showing(field):
-                raise ApplierError(
-                    f"geekhunter asks a screening question this page does not name as "
-                    f"`{identifier}`; the questions changed shape and nothing was answered. "
-                    f"{diagnostics.saved_page(page, url, self._diagnostics_dir)}"
-                )
-            field.fill(answer)
+            self._answer_one(page, dialog, url, identifier, answer)
         self._accept_screening_consent(dialog)
         dialog.locator(SUBMIT_SELECTOR).last.click()
+
+    def _answer_one(self, page: Any, dialog: Any, url: str, identifier: str, answer: str) -> None:
+        """Type the answer, or pick it — the widget depends on what the question asks.
+
+        A question with a written answer carries a field named after its own id; a yes/no
+        or multiple-choice one is a set of controls labelled with the answers themselves.
+        """
+        field = dialog.locator(f"[name='{identifier}']").first
+        if diagnostics.is_showing(field):
+            try:
+                field.fill(answer, timeout=_WIDGET_MS)
+                return
+            except Exception:
+                pass  # named, but not something you type into: it is a choice
+        option = dialog.get_by_text(answer, exact=True).last
+        if not diagnostics.is_showing(option):
+            raise ApplierError(
+                f"geekhunter asks a screening question this page neither names as "
+                f"`{identifier}` nor offers `{answer}` for; the questions changed shape and "
+                f"nothing was answered. "
+                f"{diagnostics.saved_page(page, url, self._diagnostics_dir)}"
+            )
+        option.click()
 
     def _accept_screening_consent(self, dialog: Any) -> None:
         """The screening screen asks its own consent, about sensitive data.

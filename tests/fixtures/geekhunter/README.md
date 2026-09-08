@@ -19,6 +19,7 @@ No test in this suite reaches the network — see [TESTING.md](../../../docs/TES
 | `job-with-form-unconfirmed.html` | the same form, answering a valid submission with a failure instead of the confirmation |
 | `job-with-form-two-contracts.html` | the same form on a job open to CLT **and** PJ: both expected-salary fields required |
 | `job-with-form-awaiting-email.html` | the same form, answering with the platform's "confirm by email" notice instead of a confirmation |
+| `job-with-form-screening-choice.html` | the screening screen asking a yes/no question: controls labelled with the answers, nothing to type |
 | `job-with-form-screening.html` | the same form, answering a valid submission with the platform's screening questions |
 | `job-with-form-logged-in.html` | the same form as a signed-in candidate sees it: email filled and locked |
 

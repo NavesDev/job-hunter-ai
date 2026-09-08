@@ -602,3 +602,23 @@ def test_form_applier_should_say_it_applied_as_an_anonymous_visitor(site, profil
 
     # Assert
     assert "as an anonymous visitor" in result.detail
+
+
+def test_form_applier_should_pick_a_yes_no_screening_answer_instead_of_typing_it(site, profile):
+    # Arrange
+    subject = applier(timeout_ms=8000)
+    job = job_page(site, "job-with-form-screening-choice.html")
+    job = Job(
+        id=job.id,
+        source=job.source,
+        title=job.title,
+        company=job.company,
+        url=job.url,
+        raw={"screeningQuestions": QUESTIONS},
+    )
+
+    # Act
+    result = subject.apply(job, profile, answers=ANSWERS)
+
+    # Assert
+    assert result.status is ApplicationStatus.SENT
