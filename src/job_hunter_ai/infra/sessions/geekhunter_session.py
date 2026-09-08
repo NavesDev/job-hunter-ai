@@ -74,7 +74,7 @@ class GeekHunterSession:
             if force:
                 raise SessionError(
                     "geekhunter still recognizes this profile after clearing its cookies; "
-                    "sign out by hand in the profile, or delete it and run login again"
+                    "sign out by hand in the profile, or delete it and run login-platform again"
                 )
             return self._result(SessionStatus.ALREADY_AUTHENTICATED, "the profile is signed in")
         self._fill_and_submit(page)

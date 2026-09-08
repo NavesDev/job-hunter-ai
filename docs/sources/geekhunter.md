@@ -71,7 +71,7 @@ The `manual` source takes no `--filter` and raises `INVALID_INPUT` when it gets 
 ## Signing in
 
 ```bash
-login --source geekhunter
+login-platform --source geekhunter
 ```
 
 Applying anonymously works, but GeekHunter then holds the application until the candidate
@@ -89,7 +89,7 @@ GEEKHUNTER_PASSWORD=...
 ```
 
 They are typed into the platform's own form and nowhere else — never a flag, never the
-output, never an error, never the history. A session that expires is one `login` away, so
+output, never an error, never the history. A session that expires is one `login-platform` away, so
 an agent can recover it without a human at the keyboard.
 
 ## Applying

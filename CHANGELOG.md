@@ -35,13 +35,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ### Added
 
-- `login --source <platform>`: keeps a signed-in session in a browser profile of the tool's
+- `login-platform --source <platform>`: keeps a signed-in session in a browser profile of the tool's
   own, so `apply-job --method form` applies as the candidate instead of anonymously — an
   anonymous GeekHunter application waits for a link the platform emails, a signed-in one is
   delivered. It signs in only when the profile has no session, and `--force` signs in again
   when one went stale, which is how an agent recovers without a human at the keyboard.
   Credentials come from `.env` as `<SOURCE>_USERNAME` / `<SOURCE>_PASSWORD` and never reach
-  a flag, the output, an error or the history ([CONTRACT.md](docs/CONTRACT.md#login)).
+  a flag, the output, an error or the history ([CONTRACT.md](docs/CONTRACT.md#login-platform)).
 - `SESSION_ERROR`, a new contract error code: the platform gave no session.
 - `SessionStrategy` port plus `infra/sessions/` and its registry: a new platform's sign-in
   is a new class and a registry entry, like its source and its applier.

@@ -6,7 +6,7 @@ from enum import StrEnum
 
 
 class SessionStatus(StrEnum):
-    """What the `login` command had to do. See docs/CONTRACT.md."""
+    """What the `login-platform` command had to do. See docs/CONTRACT.md."""
 
     AUTHENTICATED = "authenticated"
     ALREADY_AUTHENTICATED = "already_authenticated"

@@ -112,7 +112,7 @@ apply-job --job-id manual:d4979b84f109 --method form
 #### Signing in first
 
 ```bash
-login --source geekhunter
+login-platform --source geekhunter
 ```
 
 Applying anonymously leaves the application waiting for a link GeekHunter emails you. Signed

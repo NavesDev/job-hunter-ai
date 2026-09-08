@@ -51,7 +51,7 @@ Issues = "https://github.com/NavesDev/job-hunter-ai/issues"
 [project.scripts]
 list-jobs = "job_hunter_ai.cli.main:list_jobs_app"
 apply-job = "job_hunter_ai.cli.main:apply_job_app"
-login = "job_hunter_ai.cli.main:login_app"
+login-platform = "job_hunter_ai.cli.main:login_app"
 
 [tool.setuptools.packages.find]
 where = ["src"]

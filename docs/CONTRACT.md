@@ -129,7 +129,7 @@ questions only the candidate can answer, or it never confirmed the application. 
 error propagates — an application is never reported as sent without the platform's
 own confirmation.
 
-## `login`
+## `login-platform`
 
 **Input** (flags):
 
