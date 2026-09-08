@@ -26,7 +26,9 @@ from job_hunter_ai.infra.appliers import geekhunter_screening as screening
 
 FORM_SELECTOR = "form:has(input[name='name'])"
 SUBMIT_SELECTOR = "button[type='submit']"
-CONFIRMATION_TEXT = "Candidatura Completa"
+# The platform confirms in its own words, and which words depend on the path taken:
+# a form that ends there says one thing, a form that went through screening another.
+CONFIRMATION_TEXTS = ("Candidatura Completa", "Obrigado pela sua candidatura")
 SCREENING_TEXT = "Você está quase terminando"
 SCREENING_DIALOG = "[role='dialog']"
 RESUME_UPLOADED_TEXT = "carregado com sucesso"
@@ -294,11 +296,10 @@ class GeekHunterFormApplier:
         as a form that was refused, and it must not read like one.
         """
         page.locator(SUBMIT_SELECTOR).first.click()
-        confirmation = page.get_by_text(CONFIRMATION_TEXT).first
         screen = page.get_by_text(SCREENING_TEXT).first
         deadline = time.monotonic() + self._timeout_ms / 1000
         while time.monotonic() < deadline:
-            if diagnostics.is_showing(confirmation):
+            if self._is_confirmed(page):
                 return
             if diagnostics.is_showing(screen):
                 self._answer_screening(page, url, answers)
@@ -308,12 +309,18 @@ class GeekHunterFormApplier:
 
     def _confirmed(self, page: Any, url: str, values: dict[str, str]) -> None:
         """The platform's own word on the second step, waited for exactly like the first."""
-        try:
-            page.get_by_text(CONFIRMATION_TEXT).first.wait_for(timeout=self._timeout_ms)
-        except Exception as exc:
-            raise ApplierError(
-                diagnostics.unconfirmed(page, url, values, self._diagnostics_dir)
-            ) from exc
+        deadline = time.monotonic() + self._timeout_ms / 1000
+        while time.monotonic() < deadline:
+            if self._is_confirmed(page):
+                return
+            page.wait_for_timeout(_POLL_MS)
+        raise ApplierError(diagnostics.unconfirmed(page, url, values, self._diagnostics_dir))
+
+    def _is_confirmed(self, page: Any) -> bool:
+        """Whether the page is showing any of the confirmations the platform gives."""
+        return any(
+            diagnostics.is_showing(page.get_by_text(text).first) for text in CONFIRMATION_TEXTS
+        )
 
     def _answer_screening(self, page: Any, url: str, answers: dict[str, str]) -> None:
         """Type the answers the caller gave, and refuse to submit a question left blank.

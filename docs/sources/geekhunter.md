@@ -86,8 +86,10 @@ browser_profile_dir: "config/local/browser-profile"   # a profile you logged int
 ```
 
 `submit: false` fills everything and stops: `status="skipped"`, the filled values in
-`detail`, nothing sent. `status="sent"` is returned only when GeekHunter answers with its
-own confirmation; anything else is `failed`, recorded in the history with the reason.
+`detail`, nothing sent. `status="sent"` is returned only when GeekHunter answers with a confirmation of its own —
+`Candidatura Completa` when the form ends the application, `Obrigado pela sua candidatura`
+when it went through screening first. Anything else is `failed`, recorded in the history
+with the reason.
 
 ### Screening questions
 

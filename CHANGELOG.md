@@ -6,6 +6,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ### Fixed
 
+- `apply-job --method form` recognizes both confirmations GeekHunter gives. An application
+  that goes through screening ends on `Obrigado pela sua candidatura`, not
+  `Candidatura Completa`, and was being reported as failed after actually going through.
 - `apply-job --method form` drives GeekHunter's real screening screen: a dialog whose
   fields are named by the question's own id, with its own consent about sensitive data
   (covered by `accept_terms`, and documented) and its own submit button. The shape assumed
