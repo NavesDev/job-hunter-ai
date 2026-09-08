@@ -51,6 +51,7 @@ list-jobs --source manual --file jobs.json --max-length 100
 | `--source` | yes | Registered job source (`manual`, `geekhunter`) |
 | `--file` | source-dependent | Path to the input JSON/CSV (`manual` source) |
 | `--max-length` | no (default 50) | Maximum number of jobs returned |
+| `--filter` | no | Listing filter as `name=value`, repeatable (`geekhunter` source) |
 
 The `manual` source expects a JSON list; `title` and `company` are required, everything else optional:
 
@@ -78,9 +79,18 @@ filters:
   searchTerm: "python"
 ```
 
+For a one-off run, `--filter name=value` (repeat it) takes the place of the whole
+`filters:` mapping in the YAML — the two are never merged, so a run states its filters
+in full:
+
+```bash
+list-jobs --source geekhunter --filter workModality=remote --filter searchTerm=python
+```
+
 An unknown filter name or value raises `INVALID_INPUT` **before** any request goes
 out: the platform silently ignores a bad filter and returns its whole listing, which
-would quietly hand you the wrong jobs.
+would quietly hand you the wrong jobs. So does an argument that is not a `name=value`
+pair. The `manual` source takes no `--filter`.
 
 The source needs no login and reads only public pages. It identifies itself by
 user-agent and paces itself to one request per second — collecting `n` jobs costs

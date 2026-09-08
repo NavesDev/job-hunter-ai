@@ -176,3 +176,34 @@ def test_list_jobs_should_honor_the_contract_when_the_source_is_geekhunter(
     assert payload[0]["id"].startswith("geekhunter:")
     assert payload[0]["apply_email"] is None
     assert payload[0]["collected_at"].endswith("Z")
+
+
+def test_list_jobs_should_fail_with_invalid_input_when_a_filter_is_not_a_name_value_pair(
+    runner, workspace
+):
+    # Arrange
+    args = ["--source", "manual", "--file", str(write_jobs(workspace)), "--filter", "remote"]
+
+    # Act
+    result = runner.invoke(list_jobs_app, args)
+
+    # Assert
+    assert result.exit_code != 0
+    error = parse_stderr_json(result)
+    assert error["code"] == "INVALID_INPUT"
+    assert "remote" in error["error"]
+
+
+def test_list_jobs_should_fail_with_invalid_input_when_the_manual_source_gets_a_filter(
+    runner, workspace
+):
+    # Arrange
+    file = str(write_jobs(workspace))
+    args = ["--source", "manual", "--file", file, "--filter", "searchTerm=python"]
+
+    # Act
+    result = runner.invoke(list_jobs_app, args)
+
+    # Assert
+    assert result.exit_code != 0
+    assert parse_stderr_json(result)["code"] == "INVALID_INPUT"

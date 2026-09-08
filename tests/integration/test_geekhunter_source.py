@@ -181,3 +181,44 @@ def test_geekhunter_source_should_raise_source_error_when_the_listing_lost_its_j
     # Act / Assert
     with pytest.raises(SourceError):
         source.fetch(max_length=1)
+
+
+def test_geekhunter_source_should_use_the_fetch_filters_instead_of_the_configured_ones():
+    # Arrange
+    client = recorded_client(
+        **{f"{LISTING}?page=1&searchTerm=python": fixture("listing-page-1.html")}
+    )
+    settings = {"filters": {"workModality": "remote", "experienceLevel": "senior"}}
+    source = GeekHunterJobSource(client, settings=settings)
+
+    # Act
+    source.fetch(max_length=1, filters={"searchTerm": "python"})
+
+    # Assert
+    assert client.requested[0] == f"{LISTING}?page=1&searchTerm=python"
+
+
+def test_geekhunter_source_should_keep_the_configured_filters_when_fetch_carries_none():
+    # Arrange
+    client = recorded_client(
+        **{f"{LISTING}?page=1&experienceLevel=senior": fixture("listing-page-1.html")}
+    )
+    source = GeekHunterJobSource(client, settings={"filters": {"experienceLevel": "senior"}})
+
+    # Act
+    source.fetch(max_length=1, filters={})
+
+    # Assert
+    assert client.requested[0] == f"{LISTING}?page=1&experienceLevel=senior"
+
+
+def test_geekhunter_source_should_raise_invalid_input_when_a_fetch_filter_is_unknown():
+    # Arrange
+    client = recorded_client()
+    source = GeekHunterJobSource(client)
+
+    # Act / Assert
+    with pytest.raises(InvalidInputError) as error:
+        source.fetch(max_length=1, filters={"seniority": "senior"})
+    assert "seniority" in str(error.value)
+    assert client.requested == []

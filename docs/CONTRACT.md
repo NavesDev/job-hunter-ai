@@ -18,10 +18,15 @@ The input/output contract every script (`list-jobs`, `apply-job`, and any new co
 |---|---|---|---|
 | `--source` | string | yes | Name of a registered source (`manual`, `geekhunter`) |
 | `--file` | path | source-dependent | Input file (`manual` source) |
+| `--filter` | `name=value`, repeatable | no | Listing filter (`geekhunter` source) |
 
-The `geekhunter` source takes no flag of its own: what it collects is filtered by
-`config/local/sources/geekhunter.yaml` (see the [README](../README.md#geekhunter)).
-It never returns an `apply_email` — the platform exposes none.
+The `geekhunter` source is filtered by `config/local/sources/geekhunter.yaml`
+(see the [README](../README.md#geekhunter)). Every `--filter name=value` given
+**replaces** that whole `filters:` mapping for the run — the two are never merged.
+An unknown filter name or value, or an argument that is not a `name=value` pair,
+raises `INVALID_INPUT` before any request goes out. The `manual` source takes no
+`--filter` and raises `INVALID_INPUT` when it gets one.
+The `geekhunter` source never returns an `apply_email` — the platform exposes none.
 | `--max-length` | int | no (default 50) | Maximum number of jobs returned; must be `>= 1` |
 
 **Output** (stdout), a list of `Job`. Every field is always present; `url` and `apply_email` may be `null`. `raw` carries the untouched source payload, for auditing.

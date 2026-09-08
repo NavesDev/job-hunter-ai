@@ -34,22 +34,24 @@ class GeekHunterJobSource:
         self._filters = validated(settings.get("filters"))
 
     def fetch(self, max_length: int, **options: Any) -> list[Job]:
-        urls = self._job_urls(max_length)
+        """Collect jobs, filtered by `--filter` when it carries one, by the YAML otherwise."""
+        filters = validated(options.get("filters")) or self._filters
+        urls = self._job_urls(max_length, filters)
         collected_at = utc_now()
         return [self._job(url, collected_at) for url in urls]
 
-    def _job_urls(self, max_length: int) -> list[str]:
+    def _job_urls(self, max_length: int, filters: dict[str, str]) -> list[str]:
         urls: list[str] = []
         for page in range(1, MAX_LISTING_PAGES + 1):
-            listing_url = self._listing_url(page)
+            listing_url = self._listing_url(page, filters)
             found = parser.listing_job_urls(self._http.get(listing_url), listing_url)
             urls.extend(url for url in found if url not in urls)
             if len(urls) >= max_length:
                 break
         return urls[:max_length]
 
-    def _listing_url(self, page: int) -> str:
-        query = urlencode({"page": page, **self._filters})
+    def _listing_url(self, page: int, filters: dict[str, str]) -> str:
+        query = urlencode({"page": page, **filters})
         return f"{self._base_url}{LISTING_PATH}?{query}"
 
     def _job(self, url: str, collected_at: datetime) -> Job:

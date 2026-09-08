@@ -19,6 +19,8 @@ class ManualJsonJobSource:
     name = "manual"
 
     def fetch(self, max_length: int, **options: Any) -> list[Job]:
+        if options.get("filters"):
+            raise InvalidInputError("the manual source takes no --filter; it reads --file as is")
         path = self._required_path(options.get("file"))
         entries = self._read_entries(path)
         collected_at = utc_now()

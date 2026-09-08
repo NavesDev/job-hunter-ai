@@ -33,13 +33,38 @@ def list_jobs(
     max_length: Annotated[
         int, typer.Option("--max-length", help="Maximum number of jobs returned.")
     ] = DEFAULT_MAX_LENGTH,
+    filter_: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--filter",
+            help="Listing filter as `name=value`; repeat it. Replaces the filters in the YAML.",
+        ),
+    ] = None,
 ) -> None:
     """List normalized jobs from a source and print them as JSON on stdout."""
+    filters = _filters(filter_)
     config = load_config()
     job_source = build_source_registry().get(source)
     with SqliteJobRepository(config.storage.database_path) as repository:
-        jobs = ListJobsUseCase(job_source, repository).execute(max_length=max_length, file=file)
+        jobs = ListJobsUseCase(job_source, repository).execute(
+            max_length=max_length, file=file, filters=filters
+        )
     emit_success([job_to_payload(job) for job in jobs])
+
+
+def _filters(pairs: list[str] | None) -> dict[str, str]:
+    """Parse every `--filter name=value` into a mapping, refusing anything else.
+
+    Only the syntax is checked here: which names and values a platform honors is the
+    source's own rule, and it raises before any request goes out.
+    """
+    filters: dict[str, str] = {}
+    for pair in pairs or []:
+        name, separator, value = pair.partition("=")
+        if not separator or not name.strip():
+            raise InvalidInputError(f"--filter takes `name=value`, got `{pair}`")
+        filters[name.strip()] = value.strip()
+    return filters
 
 
 @apply_job_app.command()

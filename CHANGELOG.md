@@ -15,6 +15,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
   (`workModality`, `experienceLevel`, `searchTerm`, `cityName`, `minSalary`, `maxSalary`,
   `publishedAfter`) are validated against the values the platform actually honors, before any
   request goes out.
+- `list-jobs --filter name=value` (repeatable): states the GeekHunter listing filters for a
+  single run, replacing the whole `filters:` mapping of
+  `config/local/sources/geekhunter.yaml` instead of merging with it. Values go through the
+  same validation as the YAML ones, so an unknown name or value raises `INVALID_INPUT` before
+  any request goes out ([CONTRACT.md](docs/CONTRACT.md#list-jobs)).
 - `SOURCE_ERROR`, a new contract error code: a source could not deliver its jobs because the
   platform refused the request or the page changed shape. A source never returns an empty list
   where it expected jobs ([CONTRACT.md](docs/CONTRACT.md#errors-any-command)).
