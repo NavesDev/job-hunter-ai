@@ -35,6 +35,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ### Added
 
+- `apply-job` refuses a second application to a job already applied to: a `sent` or
+  `pending` attempt in the local history raises the new `ALREADY_APPLIED` code before any
+  applier runs, and nothing is recorded. `--force` makes a deliberate second attempt
+  explicit; attempts that failed or were skipped never block, because nothing reached the
+  platform ([CONTRACT.md](docs/CONTRACT.md#errors-any-command)).
+- `JobRepository.get_applications(job_id)`: the history a job already carries, oldest first.
+
 - `status="pending"`, a fourth application status: the platform took the application but has
   not delivered it. An anonymous GeekHunter application waits for a link emailed to the
   candidate, and reporting that as `sent` would claim what the platform itself denies

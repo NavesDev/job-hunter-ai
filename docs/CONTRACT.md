@@ -59,6 +59,7 @@ The `geekhunter` source never returns an `apply_email` — the platform exposes 
 | `--subject` | string | no | Subject; defaults to the local configuration |
 | `--salary` | `clt` \| `pj` \| `internship` | no | Which predefined salary expectation to offer |
 | `--answer` | `question-id=value`, repeatable | screening-dependent | Answer to a screening question of the job |
+| `--force` | flag | no | Apply again to a job already applied to |
 | `--all-ready` | flag | no | Applies in batch |
 
 `--salary` never carries an amount: it names one of the expectations the profile already
@@ -94,7 +95,7 @@ A single JSON object on stderr:
 {"error": "smtp connection refused", "code": "SMTP_ERROR"}
 ```
 
-Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`, `SOURCE_ERROR`, `APPLIER_ERROR`. A new code must be documented here before being used.
+Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`, `SOURCE_ERROR`, `APPLIER_ERROR`, `ALREADY_APPLIED`. A new code must be documented here before being used.
 
 `SOURCE_ERROR` means a source could not deliver its jobs: the platform refused the
 request, or the page no longer has the shape the source parses. It is never a silent
@@ -107,6 +108,12 @@ each value is checked against the question's own type and range **before** the b
 opens, raising `INVALID_INPUT` when it does not fit. Applying without them submits nothing:
 the run reports `APPLIER_ERROR` naming the questions. Nothing is ever answered on the
 candidate's behalf.
+
+`ALREADY_APPLIED` means the job already carries a `sent` or `pending` attempt in the local
+history: applying again would be a second candidacy in the candidate's name, and an
+application cannot be un-sent. Nothing runs and nothing is recorded — `--force` is how a
+deliberate second attempt says so. Earlier attempts that `failed` or were `skipped` never
+block: nothing reached the platform.
 
 `status="pending"` means the platform took the application but has not delivered it: on
 GeekHunter an anonymous application waits for the candidate to click a link emailed to

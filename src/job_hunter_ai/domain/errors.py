@@ -35,5 +35,9 @@ class PageNotFoundError(SourceError):
     """A page the platform does not have. Same contract code: it is still a source failure."""
 
 
+class AlreadyAppliedError(JobHunterError):
+    code = "ALREADY_APPLIED"
+
+
 class ApplierError(JobHunterError):
     code = "APPLIER_ERROR"

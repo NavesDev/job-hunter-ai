@@ -92,6 +92,10 @@ def apply_job(
             help="Screening answer as `question-id=value`; repeat it, one per question.",
         ),
     ] = None,
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="Apply again to a job already applied to, on purpose."),
+    ] = False,
     all_ready: Annotated[
         bool, typer.Option("--all-ready", help="Apply in batch to every collected job.")
     ] = False,
@@ -118,5 +122,6 @@ def apply_job(
             subject=subject,
             salary=salary,
             answers=_pairs("--answer", answer),
+            force=force,
         )
     emit_success(application_result_to_payload(result))

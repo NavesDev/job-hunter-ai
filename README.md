@@ -160,6 +160,10 @@ checked against its own question before the browser opens:
 apply-job --job-id geekhunter:eb228a61b659 --method form --answer 142139=2
 ```
 
+A job that already carries a `sent` or `pending` attempt is refused with `ALREADY_APPLIED`
+before anything runs — a duplicate application reaches the company twice in your name. Pass
+`--force` when the second attempt is deliberate.
+
 `--salary` never carries an amount: it names one of the values above. Only what the profile
 predefines can ever be sent. A missing field raises `INVALID_INPUT` **before** the browser
 opens, because an application cannot be un-sent. `status="sent"` is only

@@ -23,3 +23,6 @@ class FakeJobRepository:
 
     def save_application(self, result: ApplicationResult) -> None:
         self.applications.append(result)
+
+    def get_applications(self, job_id: str) -> list[ApplicationResult]:
+        return [result for result in self.applications if result.job_id == job_id]
