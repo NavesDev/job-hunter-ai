@@ -18,3 +18,4 @@ Long, exploratory discussion still lives in `docs/superpowers/specs/`. The ADR i
 | [0002](0002-cli-json-contract.md) | The CLI as a JSON contract for external agents | Accepted | 2026-09-03 |
 | [0003](0003-config-credentials-separation.md) | Separating configuration from credentials | Accepted | 2026-09-03 |
 | [0004](0004-single-package.md) | A single `job_hunter_ai` package under `src/` | Accepted | 2026-09-03 |
+| [0005](0005-playwright-for-form-appliers.md) | Playwright for form appliers, and only for them | Accepted | 2026-09-05 |

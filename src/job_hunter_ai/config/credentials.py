@@ -1,4 +1,4 @@
-"""SMTP credentials, always from `.env` — never from the versioned YAML.
+"""Credentials, always from `.env` — never from the versioned YAML.
 
 Kept in its own module so that `list-jobs` and the form appliers never trigger a
 credential lookup they do not need (docs/ARCHITECTURE.md#configuration-vs-credentials).
@@ -9,6 +9,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from job_hunter_ai.domain.entities.platform_credentials import PlatformCredentials
 from job_hunter_ai.domain.entities.smtp_config import SmtpConfig
 from job_hunter_ai.domain.errors import InvalidInputError
 
@@ -47,3 +48,23 @@ def _port(raw: str | None) -> int:
         return int(raw)
     except ValueError as exc:
         raise InvalidInputError(f"SMTP_PORT must be an integer, got `{raw}`") from exc
+
+
+def load_platform_credentials(platform: str, root: Path | None = None) -> PlatformCredentials:
+    """Read one platform's login from `.env`, as `<PLATFORM>_USERNAME` / `_PASSWORD`.
+
+    A platform credential lives here and nowhere else: never in the YAML settings, never
+    in a flag, never in the history. Fail-fast — a missing one raises before a browser
+    opens, because a login form silently accepts an empty field.
+    """
+    base = root or Path.cwd()
+    load_dotenv(base / ENV_FILE, override=False)
+    prefix = platform.strip().upper().replace("-", "_")
+    names = (f"{prefix}_USERNAME", f"{prefix}_PASSWORD")
+    missing = [name for name in names if not os.environ.get(name)]
+    if missing:
+        raise InvalidInputError(
+            f"missing {platform} credentials in {base / ENV_FILE}: {', '.join(missing)}"
+        )
+    username, password = (os.environ[name] for name in names)
+    return PlatformCredentials(platform=platform, username=username, password=password)

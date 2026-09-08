@@ -4,6 +4,115 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ## [Unreleased]
 
+### Fixed
+
+- `apply-job --method form` recognizes both confirmations GeekHunter gives. An application
+  that goes through screening ends on `Obrigado pela sua candidatura`, not
+  `Candidatura Completa`, and was being reported as failed after actually going through.
+- `apply-job --method form` drives GeekHunter's real screening screen: a dialog whose
+  fields are named by the question's own id, with its own consent about sensitive data
+  (covered by `accept_terms`, and documented) and its own submit button. The shape assumed
+  before came from the stand-in fixture, not the platform.
+- `apply-job --method form` fills every expected-salary field the form shows, not only the
+  first. A job open to more than one contract type asks for one expectation per type
+  (`salaryExpectation.CLT` **and** `.PJ`), each required, and the form was being refused
+  with no clue which field it meant.
+
+- `apply-job --method form` recognizes GeekHunter's screening questions. A job can answer an
+  accepted form with questions of its own instead of the confirmation, leaving the candidacy
+  unfinished; the applier now reports `APPLIER_ERROR` naming every question asked, instead of
+  calling it an application that may or may not have gone through. It answers none of them —
+  only the candidate knows their own answers.
+- `apply-job --method form` no longer reports an unconfirmed application without saying why.
+  The error now quotes the text the page ended on, names the URL, and keeps the page under
+  `diagnostics_dir` (`config/local/diagnostics`) — the candidate's own values scrubbed from
+  the quote. Nothing is re-submitted automatically.
+
+- `list-jobs --source geekhunter` no longer fails when the listing is shorter than the run
+  asked for. GeekHunter answers `404` past the last page instead of an empty one, which is
+  the end of the listing and not a failure: the source now returns what it collected. A `404`
+  on the very first page still raises `SOURCE_ERROR` — there the listing itself is gone.
+
+### Added
+
+- `login-platform --source <platform>`: keeps a signed-in session in a browser profile of the tool's
+  own, so `apply-job --method form` applies as the candidate instead of anonymously — an
+  anonymous GeekHunter application waits for a link the platform emails, a signed-in one is
+  delivered. It signs in only when the profile has no session, and `--force` signs in again
+  when one went stale, which is how an agent recovers without a human at the keyboard.
+  Credentials come from `.env` as `<SOURCE>_USERNAME` / `<SOURCE>_PASSWORD` and never reach
+  a flag, the output, an error or the history ([CONTRACT.md](docs/CONTRACT.md#login-platform)).
+- `apply-job --method form` signs itself in when a GeekHunter job page treats the browser as
+  a stranger, then applies as the candidate: the platform's token for those pages lives only
+  while a browser is open, so a warmed profile alone is not enough. Every result now says
+  which run it was — `as the signed-in candidate` or `as an anonymous visitor` — read from
+  the page, not from the settings.
+- `SESSION_ERROR`, a new contract error code: the platform gave no session.
+- `SessionStrategy` port plus `infra/sessions/` and its registry: a new platform's sign-in
+  is a new class and a registry entry, like its source and its applier.
+
+- `apply-job` refuses a second application to a job already applied to: a `sent` or
+  `pending` attempt in the local history raises the new `ALREADY_APPLIED` code before any
+  applier runs, and nothing is recorded. `--force` makes a deliberate second attempt
+  explicit; attempts that failed or were skipped never block, because nothing reached the
+  platform ([CONTRACT.md](docs/CONTRACT.md#errors-any-command)).
+- `JobRepository.get_applications(job_id)`: the history a job already carries, oldest first.
+
+- `status="pending"`, a fourth application status: the platform took the application but has
+  not delivered it. An anonymous GeekHunter application waits for a link emailed to the
+  candidate, and reporting that as `sent` would claim what the platform itself denies
+  ([CONTRACT.md](docs/CONTRACT.md#apply-job)).
+
+- `apply-job --answer question-id=value` (repeatable): answers the screening questions a
+  GeekHunter job asks after its form, in the same run and the same browser session, so the
+  form is submitted once. `list-jobs` now records those questions in the job's `raw`, and
+  every answer is checked against its own question — type, range, offered options — before
+  the browser opens; a mandatory question left unanswered raises `INVALID_INPUT` there
+  rather than stranding a half-made candidacy. Nothing is ever answered on the candidate's
+  behalf ([CONTRACT.md](docs/CONTRACT.md#apply-job)).
+
+- `list-jobs --source geekhunter`: collects jobs from GeekHunter's public listing, reading the
+  `JobPosting` structured data each job page renders. No login, no browser, no new dependency —
+  the source identifies itself by user-agent and paces itself to one request per second
+  ([#6](https://github.com/NavesDev/job-hunter-ai/issues/6)).
+- Per-platform settings in `config/local/sources/<platform>.yaml`, with
+  `config/sources/geekhunter.example.yaml` as the versioned example. GeekHunter's listing filters
+  (`workModality`, `experienceLevel`, `searchTerm`, `cityName`, `minSalary`, `maxSalary`,
+  `publishedAfter`) are validated against the values the platform actually honors, before any
+  request goes out.
+- `list-jobs --filter name=value` (repeatable): states the GeekHunter listing filters for a
+  single run, replacing the whole `filters:` mapping of
+  `config/local/sources/geekhunter.yaml` instead of merging with it. Values go through the
+  same validation as the YAML ones, so an unknown name or value raises `INVALID_INPUT` before
+  any request goes out ([CONTRACT.md](docs/CONTRACT.md#list-jobs)).
+- [docs/sources/geekhunter.md](docs/sources/geekhunter.md): the whole GeekHunter platform on
+  one page — collecting, filters, applying through the form, HTTP settings and what a
+  `SOURCE_ERROR` means. The README and `CONTRACT.md` now point at it.
+- `SOURCE_ERROR`, a new contract error code: a source could not deliver its jobs because the
+  platform refused the request or the page changed shape. A source never returns an empty list
+  where it expected jobs ([CONTRACT.md](docs/CONTRACT.md#errors-any-command)).
+- `apply-job --method form` on a GeekHunter job: fills the platform's fixed form from the
+  profile and submits it in a browser, reporting `status="sent"` only when GeekHunter answers
+  with its own confirmation. `submit: false` fills the form and stops, with the filled values
+  in `detail` and nothing sent ([#6](https://github.com/NavesDev/job-hunter-ai/issues/6)).
+- `apply-job --salary clt|pj|internship`: picks which predefined salary expectation to offer.
+  The expectations live in `candidate.extra_fields` (`salary_expectation_clt`, `_pj`,
+  `_internship`); the flag names one of them and never carries an amount, so only a figure the
+  profile already declares can reach a form. Without the flag, the applier offers the one
+  matching the contract type the posting asks for, read from the form field's own name.
+- Applying on GeekHunter needs no credential of any kind: the platform identifies the
+  candidate by email and its form accepts an anonymous application, so the applier fills the
+  address from `candidate.contact_email` when the page has no session, and leaves the field
+  alone when a signed-in browser profile already filled it.
+- Playwright as the optional `form` extra (`pip install -e ".[form]"`), decided in
+  [ADR-0005](docs/adr/0005-playwright-for-form-appliers.md) and fenced in by a new
+  `import-linter` contract: no layer outside `infra/appliers/` may import it.
+- `APPLIER_ERROR`, a new contract error code: the applier could not complete the attempt on
+  the platform. The attempt is recorded as `failed` before the error propagates
+  ([CONTRACT.md](docs/CONTRACT.md#errors-any-command)).
+- The GeekHunter platform investigation that settled the design, recorded as a
+  [spec](docs/superpowers/specs/2026-09-05-geekhunter-source-design.md).
+
 ## [0.1.0] - 2026-09-03
 
 ### Added

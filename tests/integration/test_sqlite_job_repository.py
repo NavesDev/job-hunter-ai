@@ -3,6 +3,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 
 from job_hunter_ai.domain.entities.application_result import ApplicationResult, ApplicationStatus
+from job_hunter_ai.domain.time_utils import from_iso_utc
 from job_hunter_ai.infra.repository.sqlite_job_repository import SqliteJobRepository
 from tests.fakes import build_job
 
@@ -130,3 +131,47 @@ def test_repository_should_apply_each_migration_only_once_when_reopened(tmp_path
 
     # Assert
     assert [row[0] for row in rows] == [1]
+
+
+def test_repository_should_return_every_attempt_recorded_for_a_job_oldest_first(tmp_path):
+    # Arrange
+    job = build_job()
+    with SqliteJobRepository(tmp_path / "jobs.db") as repository:
+        repository.save_jobs([job])
+        for status, moment in (
+            (ApplicationStatus.FAILED, "2026-09-01T10:00:00Z"),
+            (ApplicationStatus.PENDING, "2026-09-02T10:00:00Z"),
+        ):
+            repository.save_application(
+                ApplicationResult(
+                    job_id=job.id,
+                    method="form",
+                    status=status,
+                    applier="geekhunter-form",
+                    detail=str(status),
+                    applied_at=from_iso_utc(moment),
+                )
+            )
+
+        # Act
+        attempts = repository.get_applications(job.id)
+
+    # Assert
+    assert [attempt.status for attempt in attempts] == [
+        ApplicationStatus.FAILED,
+        ApplicationStatus.PENDING,
+    ]
+    assert attempts[0].applier == "geekhunter-form"
+
+
+def test_repository_should_return_no_attempt_for_a_job_never_applied_to(tmp_path):
+    # Arrange
+    job = build_job()
+
+    # Act
+    with SqliteJobRepository(tmp_path / "jobs.db") as repository:
+        repository.save_jobs([job])
+        attempts = repository.get_applications(job.id)
+
+    # Assert
+    assert attempts == []

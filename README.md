@@ -48,9 +48,10 @@ list-jobs --source manual --file jobs.json --max-length 100
 
 | Flag | Required | Description |
 |---|---|---|
-| `--source` | yes | Registered job source (`manual` in phase 1) |
+| `--source` | yes | Registered job source (`manual`, `geekhunter`) |
 | `--file` | source-dependent | Path to the input JSON/CSV (`manual` source) |
 | `--max-length` | no (default 50) | Maximum number of jobs returned |
+| `--filter` | no | Listing filter as `name=value`, repeatable (`geekhunter` source) |
 
 The `manual` source expects a JSON list; `title` and `company` are required, everything else optional:
 
@@ -61,6 +62,44 @@ The `manual` source expects a JSON list; `title` and `company` are required, eve
 ]
 ```
 
+#### GeekHunter
+
+```bash
+list-jobs --source geekhunter --max-length 20
+```
+
+Collects from GeekHunter's public listing. It takes no flag of its own — what it
+collects is set in `config/local/sources/geekhunter.yaml`, copied from
+[`config/sources/geekhunter.example.yaml`](config/sources/geekhunter.example.yaml):
+
+```yaml
+filters:
+  workModality: "remote"      # remote | hybrid | on-site | remote-in-city
+  experienceLevel: "senior"   # intern | entry | mid | senior | manager
+  searchTerm: "python"
+```
+
+For a one-off run, `--filter name=value` (repeat it) takes the place of the whole
+`filters:` mapping in the YAML — the two are never merged, so a run states its filters
+in full:
+
+```bash
+list-jobs --source geekhunter --filter workModality=remote --filter searchTerm=python
+```
+
+An unknown filter name or value raises `INVALID_INPUT` **before** any request goes
+out: the platform silently ignores a bad filter and returns its whole listing, which
+would quietly hand you the wrong jobs. So does an argument that is not a `name=value`
+pair. The `manual` source takes no `--filter`.
+
+The source needs no login and reads only public pages. It identifies itself by
+user-agent and paces itself to one request per second — collecting `n` jobs costs
+`ceil(n / 10)` listing requests plus one detail request per job. Jobs come back with
+`apply_email: null`, because the platform exposes no address; applying goes through
+its form. Every filter, setting and failure mode is in
+[docs/sources/geekhunter.md](docs/sources/geekhunter.md); the design behind them is in
+[the spec](docs/superpowers/specs/2026-09-05-geekhunter-source-design.md).
+
 Output: JSON on stdout, a list of normalized jobs (`id`, `source`, `title`, `company`, `description`, `url`, `apply_email`, `raw`, `collected_at`). Every run stores and deduplicates into the local SQLite database — stable ids, no duplicates across runs ([DATA_MODEL.md](docs/DATA_MODEL.md)). Errors go to stderr as `{"error": ..., "code": ...}` with a non-zero exit code ([CONTRACT.md](docs/CONTRACT.md)).
 
 ### Apply to a job
@@ -69,6 +108,82 @@ Output: JSON on stdout, a list of normalized jobs (`id`, `source`, `title`, `com
 apply-job --job-id manual:d4979b84f109 --method email --email jobs@company.com --subject "Backend role - Your Name"
 apply-job --job-id manual:d4979b84f109 --method form
 ```
+
+#### Signing in first
+
+```bash
+login-platform --source geekhunter
+```
+
+Applying anonymously leaves the application waiting for a link GeekHunter emails you. Signed
+in, the form arrives filled with your own data and the application is delivered right away.
+The session lives in the tool's own browser profile (`browser_profile_dir`); because the
+platform's token for the job pages lasts only while a browser is open, `apply-job --method
+form` signs in again by itself whenever a job page treats it as a stranger. The
+credentials come from `.env` (`GEEKHUNTER_USERNAME`, `GEEKHUNTER_PASSWORD`) and never reach
+a flag, the output, an error or the history. `--force` signs in again when a session went
+stale.
+
+#### GeekHunter's form
+
+```bash
+pip install -e ".[form]" && playwright install chromium
+apply-job --job-id geekhunter:3b6557006129 --method form
+```
+
+Fills GeekHunter's fixed form from your profile and submits it in a browser
+([ADR-0005](docs/adr/0005-playwright-for-form-appliers.md) explains why a browser;
+[docs/sources/geekhunter.md](docs/sources/geekhunter.md) collects the whole platform).
+Three things are on you, in `config/local/sources/geekhunter.yaml`:
+
+```yaml
+accept_terms: true                               # applying accepts their Terms in your name
+submit: false                                    # fill the form and stop, for a first look
+browser_profile_dir: "config/local/browser-profile"   # a profile you logged in with by hand
+```
+
+**No GeekHunter password, ever.** The platform identifies a candidate by email, and its
+form accepts an application without a session — so the applier asks for no credential, and
+there is nowhere to put one. Left anonymous, it fills the email from
+`candidate.contact_email`. Point `browser_profile_dir` at a profile **you** signed into by
+hand and the application ties to your existing account instead; the applier still never sees
+the password, and never logs in. The phone, LinkedIn and the expected salaries come from `candidate.extra_fields`:
+
+```yaml
+candidate:
+  extra_fields:
+    phone: "+55 61 90000-0000"
+    linkedin: "https://www.linkedin.com/in/you"
+    salary_expectation_clt: "4000"
+    salary_expectation_pj: "4500"
+    salary_expectation_internship: "2000"
+```
+
+GeekHunter asks for the expectation in the posting's own contract type, and says which in
+the field's name — so the right number is picked for you. `--salary clt|pj|internship`
+overrides that:
+
+```bash
+apply-job --job-id geekhunter:6dd70e03512a --method form --salary pj
+```
+
+Jobs with screening questions need one `--answer question-id=value` per question — the
+questions come from `raw.screeningQuestions`, recorded by `list-jobs`, and each answer is
+checked against its own question before the browser opens:
+
+```bash
+apply-job --job-id geekhunter:eb228a61b659 --method form --answer 142139=2
+```
+
+A job that already carries a `sent` or `pending` attempt is refused with `ALREADY_APPLIED`
+before anything runs — a duplicate application reaches the company twice in your name. Pass
+`--force` when the second attempt is deliberate.
+
+`--salary` never carries an amount: it names one of the values above. Only what the profile
+predefines can ever be sent. A missing field raises `INVALID_INPUT` **before** the browser
+opens, because an application cannot be un-sent. `status="sent"` is only
+returned when GeekHunter answers with its own confirmation — anything else is `failed`,
+recorded in the history with the reason.
 
 | Flag | Required | Description |
 |---|---|---|

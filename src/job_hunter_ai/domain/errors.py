@@ -25,3 +25,23 @@ class SmtpError(JobHunterError):
 
 class InvalidInputError(JobHunterError):
     code = "INVALID_INPUT"
+
+
+class SourceError(JobHunterError):
+    code = "SOURCE_ERROR"
+
+
+class PageNotFoundError(SourceError):
+    """A page the platform does not have. Same contract code: it is still a source failure."""
+
+
+class AlreadyAppliedError(JobHunterError):
+    code = "ALREADY_APPLIED"
+
+
+class SessionError(JobHunterError):
+    code = "SESSION_ERROR"
+
+
+class ApplierError(JobHunterError):
+    code = "APPLIER_ERROR"

@@ -8,12 +8,20 @@ from collections.abc import Callable, Iterable, Mapping
 
 from job_hunter_ai.domain.errors import SourceNotFoundError
 from job_hunter_ai.domain.ports.job_source import JobSource
+from job_hunter_ai.infra.sources.geekhunter import GeekHunterJobSource, UrllibHttpClient
 from job_hunter_ai.infra.sources.manual_json import ManualJsonJobSource
 
 SourceFactory = Callable[[], JobSource]
 
+
+def _geekhunter() -> GeekHunterJobSource:
+    """Default wiring: no platform settings. `cli/dependencies.py` overrides it."""
+    return GeekHunterJobSource(UrllibHttpClient())
+
+
 DEFAULT_SOURCES: Mapping[str, SourceFactory] = {
     ManualJsonJobSource.name: ManualJsonJobSource,
+    GeekHunterJobSource.name: _geekhunter,
 }
 
 

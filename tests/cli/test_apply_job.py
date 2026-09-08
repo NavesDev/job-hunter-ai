@@ -196,3 +196,59 @@ def test_apply_job_should_never_leak_the_password_when_the_send_fails(
     # Assert
     assert "app-password" not in (result.stderr or result.output)
     assert all("app-password" not in row[1] for row in applications(workspace))
+
+
+def test_apply_job_should_reject_a_salary_that_is_not_a_predefined_kind(runner, workspace):
+    # Arrange
+    args = ["--job-id", "geekhunter:abc", "--method", "form", "--salary", "4200"]
+
+    # Act
+    result = runner.invoke(apply_job_app, args)
+
+    # Assert
+    assert result.exit_code != 0
+    assert parse_stderr_json(result)["code"] == "INVALID_INPUT"
+
+
+def test_apply_job_should_fail_with_invalid_input_when_an_answer_is_not_a_pair(runner, workspace):
+    # Arrange
+    args = ["--job-id", "manual:whatever", "--method", "form", "--answer", "142139"]
+
+    # Act
+    result = runner.invoke(apply_job_app, args)
+
+    # Assert
+    assert result.exit_code != 0
+    error = parse_stderr_json(result)
+    assert error["code"] == "INVALID_INPUT"
+    assert "--answer takes `name=value`" in error["error"]
+
+
+def test_apply_job_should_fail_with_already_applied_when_the_job_was_applied_to(runner, workspace):
+    # Arrange
+    job = seed_job(workspace)
+    args = ["--job-id", job.id, "--method", "email", "--email", "hr@acme.com"]
+    runner.invoke(apply_job_app, args)
+
+    # Act
+    result = runner.invoke(apply_job_app, args)
+
+    # Assert
+    assert result.exit_code != 0
+    error = parse_stderr_json(result)
+    assert error["code"] == "ALREADY_APPLIED"
+    assert "--force" in error["error"]
+
+
+def test_apply_job_should_apply_again_when_force_is_given(runner, workspace):
+    # Arrange
+    job = seed_job(workspace)
+    args = ["--job-id", job.id, "--method", "email", "--email", "hr@acme.com"]
+    runner.invoke(apply_job_app, args)
+
+    # Act
+    result = runner.invoke(apply_job_app, [*args, "--force"])
+
+    # Assert
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["status"] == "sent"

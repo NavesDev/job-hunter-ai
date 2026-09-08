@@ -1,0 +1,52 @@
+# NON-SENSITIVE settings for the `geekhunter` source.
+# Copy to config/local/sources/geekhunter.yaml and adjust. Credentials do NOT belong
+# here — a platform credential goes in .env with a GEEKHUNTER_ prefix.
+#
+# Everything below is optional: with no file at all the source collects the
+# unfiltered listing at the default pace.
+
+# Filters applied to the listing. An unknown name or an unknown value raises
+# INVALID_INPUT before any request goes out — the platform silently ignores a bad
+# filter and returns everything, which would hand you the wrong jobs.
+filters:
+  # remote | hybrid | on-site | remote-in-city
+  workModality: "remote"
+  # intern | entry | mid | senior | manager
+  experienceLevel: "senior"
+  # Free text, matched against the title and the description.
+  # searchTerm: "python"
+  # Free text, in the platform's own "City - UF" shape.
+  # cityName: "São Paulo - SP"
+  # Whole numbers, monthly, in BRL.
+  # minSalary: 10000
+  # maxSalary: 20000
+  # ISO 8601 instant.
+  # publishedAfter: "2026-08-30T00:00:00Z"
+
+http:
+  # Identify the tool. The platform's CDN answers 403 to an anonymous library agent.
+  user_agent: "job-hunter-ai/0.1 (+https://github.com/NavesDev/job-hunter-ai)"
+  timeout_seconds: 30
+  # One request at a time, at a human pace. Lower it only if you know why.
+  min_request_interval_seconds: 1.0
+
+# --- applying (apply-job --method form). Needs the `form` extra: pip install -e ".[form]"
+# Applying accepts GeekHunter's Privacy Policy and Terms of Use in your name. The applier
+# refuses to run until you say so here yourself — it is not a default.
+accept_terms: false
+
+# false fills the form and stops before submitting: the result is status="skipped" with the
+# filled values in `detail`. Use it the first time, on a job you actually want.
+submit: true
+
+# The browser profile holding your logged-in GeekHunter session. The applier never logs in
+# and never handles a password: log in once by hand in this profile.
+# browser_profile_dir: "config/local/browser-profile"
+
+# Where an application the platform never confirmed is kept, page and all, so the next run
+# is not blind. Nothing else is ever written there.
+diagnostics_dir: "config/local/diagnostics"
+
+# false opens a visible window — useful while you are watching it fill the form.
+headless: true
+timeout_ms: 30000

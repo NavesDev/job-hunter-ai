@@ -7,6 +7,7 @@ class ApplicationStatus(StrEnum):
     """Possible outcomes of an application attempt. See docs/CONTRACT.md."""
 
     SENT = "sent"
+    PENDING = "pending"
     FAILED = "failed"
     SKIPPED = "skipped"
 

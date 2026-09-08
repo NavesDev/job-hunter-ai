@@ -16,8 +16,17 @@ The input/output contract every script (`list-jobs`, `apply-job`, and any new co
 
 | Flag | Type | Required | Description |
 |---|---|---|---|
-| `--source` | string | yes | Name of a registered source (`manual`) |
+| `--source` | string | yes | Name of a registered source (`manual`, `geekhunter`) |
 | `--file` | path | source-dependent | Input file (`manual` source) |
+| `--filter` | `name=value`, repeatable | no | Listing filter (`geekhunter` source) |
+
+The `geekhunter` source is filtered by `config/local/sources/geekhunter.yaml`
+(see [docs/sources/geekhunter.md](sources/geekhunter.md)). Every `--filter name=value` given
+**replaces** that whole `filters:` mapping for the run — the two are never merged.
+An unknown filter name or value, or an argument that is not a `name=value` pair,
+raises `INVALID_INPUT` before any request goes out. The `manual` source takes no
+`--filter` and raises `INVALID_INPUT` when it gets one.
+The `geekhunter` source never returns an `apply_email` — the platform exposes none.
 | `--max-length` | int | no (default 50) | Maximum number of jobs returned; must be `>= 1` |
 
 **Output** (stdout), a list of `Job`. Every field is always present; `url` and `apply_email` may be `null`. `raw` carries the untouched source payload, for auditing.
@@ -48,7 +57,20 @@ The input/output contract every script (`list-jobs`, `apply-job`, and any new co
 | `--method` | `email` \| `form` | yes | Application method |
 | `--email` | string | if `method=email` and the job carries no address | Recipient |
 | `--subject` | string | no | Subject; defaults to the local configuration |
+| `--salary` | `clt` \| `pj` \| `internship` | no | Which predefined salary expectation to offer |
+| `--answer` | `question-id=value`, repeatable | screening-dependent | Answer to a screening question of the job |
+| `--force` | flag | no | Apply again to a job already applied to |
 | `--all-ready` | flag | no | Applies in batch |
+
+`--salary` never carries an amount: it names one of the expectations the profile already
+declares (`candidate.extra_fields.salary_expectation_clt`, `_pj`, `_internship`). Without
+it, the applier offers the one matching the contract type the posting asks for.
+
+`--method form` on a `geekhunter` job drives the platform's fixed form in a browser,
+using the profile and the settings in `config/local/sources/geekhunter.yaml`
+(see [docs/sources/geekhunter.md](sources/geekhunter.md)). With
+`submit: false` there it fills the form and stops: the result is `status="skipped"`
+with the filled values in `detail`, and nothing is sent.
 
 **Output** (stdout), an `ApplicationResult`:
 
@@ -73,7 +95,67 @@ A single JSON object on stderr:
 {"error": "smtp connection refused", "code": "SMTP_ERROR"}
 ```
 
-Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`. A new code must be documented here before being used.
+Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`, `SOURCE_ERROR`, `APPLIER_ERROR`, `ALREADY_APPLIED`, `SESSION_ERROR`. A new code must be documented here before being used.
+
+`SOURCE_ERROR` means a source could not deliver its jobs: the platform refused the
+request, or the page no longer has the shape the source parses. It is never a silent
+empty result — a source that finds nothing where it expected jobs raises instead of
+returning `[]`.
+
+A `geekhunter` job may ask screening questions after its form; they are recorded in the
+job's `raw` by `list-jobs`. Every mandatory one needs an `--answer question-id=value`, and
+each value is checked against the question's own type and range **before** the browser
+opens, raising `INVALID_INPUT` when it does not fit. Applying without them submits nothing:
+the run reports `APPLIER_ERROR` naming the questions. Nothing is ever answered on the
+candidate's behalf.
+
+`SESSION_ERROR` means the platform did not give a session: it refused the credentials, or
+the sign-in page could not be reached. The message never carries the password.
+
+`ALREADY_APPLIED` means the job already carries a `sent` or `pending` attempt in the local
+history: applying again would be a second candidacy in the candidate's name, and an
+application cannot be un-sent. Nothing runs and nothing is recorded — `--force` is how a
+deliberate second attempt says so. Earlier attempts that `failed` or were `skipped` never
+block: nothing reached the platform.
+
+`status="pending"` means the platform took the application but has not delivered it: on
+GeekHunter an anonymous application waits for the candidate to click a link emailed to
+them. It is a successful run — JSON on stdout, exit code `0` — and never `sent`, because
+the platform itself says it is not.
+
+`APPLIER_ERROR` means an applier could not complete the attempt on the platform: the
+page no longer has the form it drives, the session expired, the platform asked screening
+questions only the candidate can answer, or it never confirmed the application. The attempt is recorded as `status="failed"` before the
+error propagates — an application is never reported as sent without the platform's
+own confirmation.
+
+## `login-platform`
+
+**Input** (flags):
+
+| Flag | Type | Required | Description |
+|---|---|---|---|
+| `--source` | string | yes | Platform to sign in to (`geekhunter`) |
+| `--force` | flag | no | Sign in again even when the profile already has a session |
+
+Credentials come from `.env` as `<SOURCE>_USERNAME` / `<SOURCE>_PASSWORD` and never appear
+in a flag, in the output, in an error or in the history. The session lives in the browser
+profile at `browser_profile_dir`, which `apply-job --method form` then reuses.
+
+**Output** (stdout), a `SessionResult`:
+
+```json
+{
+  "source": "geekhunter",
+  "status": "authenticated",
+  "profile_dir": "config/local/browser-profile",
+  "detail": "signed in with the credentials in .env",
+  "checked_at": "2026-09-08T17:30:00Z"
+}
+```
+
+`status` is `authenticated` (it signed in) or `already_authenticated` (the profile already
+had a session, and nothing was typed).
 
 ## Compatibility
 

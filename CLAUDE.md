@@ -6,7 +6,12 @@ Guidance for any AI agent (and any human) working in this repository.
 
 Deterministic, AI-free CLI scripts (`list-jobs`, `apply-job`). The intelligence lives
 *outside*: an orchestrating agent decides and passes data in through flags. Never add an
-LLM call, a heuristic guess or a network fetch to the scripts themselves.
+LLM call or a heuristic guess to the scripts.
+
+Network access is allowed in exactly one place: an `infra/` source or applier that reads
+or drives a platform the user asked for (`geekhunter`, SMTP). It is always explicit, paced
+and identified — never a hidden fetch, never in `domain/` or `application/`, and never in a
+test (the suites run on recorded fixtures and a local server).
 
 ## Read before changing code
 
@@ -17,6 +22,7 @@ LLM call, a heuristic guess or a network fetch to the scripts themselves.
 | [docs/TESTING.md](docs/TESTING.md) | AAA pattern, fakes vs mocks, test layout |
 | [docs/CONTRACT.md](docs/CONTRACT.md) | CLI input/output — stdout, stderr, exit codes |
 | [docs/DATA_MODEL.md](docs/DATA_MODEL.md) | SQLite schema, job ids, dedup, migrations |
+| [docs/sources/geekhunter.md](docs/sources/geekhunter.md) | The GeekHunter platform: filters, settings, failure modes |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Branch names, commit scopes, PR flow |
 
 ## Engineering principles
@@ -36,7 +42,7 @@ platform is a **new class plus a registry entry**, never an edit to `application
 | Pattern | Where | Why |
 |---|---|---|
 | Ports & Adapters | `domain/ports` + `infra/` | swap SQLite or SMTP without touching a use case |
-| Registry + Factory | `infra/sources/registry.py`, `infra/appliers/registry.py` | resolve `--source` and `(method, source)` by name; Open/Closed for new platforms |
+| Registry + Factory | `infra/sources/registry.py`, `infra/appliers/registry.py`, `infra/sessions/registry.py` | resolve `--source` and `(method, source)` by name; Open/Closed for new platforms |
 | Strategy | `JobSource`, `JobApplier` | one interchangeable implementation per platform |
 | Repository | `JobRepository` | persistence details never leak into `application/` |
 | Dependency Injection | use case constructors | `cli/dependencies.py` is the only composition root |

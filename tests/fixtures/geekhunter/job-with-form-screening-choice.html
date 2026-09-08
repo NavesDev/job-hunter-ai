@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Desenvolvedor(a) .NET Júnior/Pleno em Agenda Digital Ltda.</title>
+<!--
+  A stand-in for a GeekHunter job page, served locally by the test suite.
+
+  The form markup mirrors the real page: same field names, same required fields,
+  same `accept=".pdf"`, same submit label, and the screening screen instead of the confirmation. What it does
+  NOT reproduce is GeekHunter's Server Action - the script below just checks the
+  required fields and renders the platform's confirmation text, so the applier can
+  be driven end to end without an application ever leaving the machine.
+-->
+</head>
+<body>
+  <h1>Desenvolvedor(a) .NET Júnior/Pleno</h1>
+  <p>Agenda Digital Ltda.</p>
+
+  <form id="application">
+    <label for="field-name">Nome completo *</label>
+    <input id="field-name" name="name" type="text" placeholder="Seu nome completo">
+
+    <label for="field-email">Email *</label>
+    <input id="field-email" name="email" type="text">
+
+    <label for="field-confirm-email">Confirme seu email *</label>
+    <input id="field-confirm-email" name="confirmEmail" type="text">
+
+    <label for="field-phone">Celular com DDD *</label>
+    <input id="field-phone" name="phone" type="tel" value="+55">
+
+    <label for="field-linkedin">LinkedIn *</label>
+    <input id="field-linkedin" name="linkedin" type="text"
+           placeholder="https://www.linkedin.com/in/seu-perfil">
+
+    <label for="field-resume">Currículo (CV) *</label>
+    <input id="field-resume" name="resume" type="file" accept=".pdf">
+    <p id="upload-state"></p>
+
+    <label for="field-salary">Remuneração mensal esperada como CLT? *</label>
+    <input id="field-salary" name="salaryExpectation.CLT" type="text" placeholder="R$ 0,00">
+
+    <!-- The platform hides the real input behind a styled control, as its design
+         system does: it is one clipped pixel, and never actionable to a click. -->
+    <input id="field-terms" type="checkbox" style="border:0;clip:rect(0, 0, 0, 0);height:1px;width:1px;margin:-1px;padding:0;overflow:hidden;white-space:nowrap;position:absolute">
+    <label for="field-terms">Li e aceito a Política de Privacidade e os
+      Termos de Uso.</label>
+
+    <button type="submit">Candidatar para a vaga</button>
+  </form>
+
+  <div id="outcome"></div>
+
+  <script>
+    // The platform uploads the resume on its own and re-renders the form when it lands,
+    // which drops every value typed before it. A field the session owns keeps its value.
+    // Reproduced here so the suite catches an applier that fills the fields first and
+    // submits an empty application.
+    document.getElementById("field-resume").addEventListener("change", function () {
+      window.setTimeout(function () {
+        var form = document.getElementById("application");
+        Array.prototype.forEach.call(form.querySelectorAll("input[type='text']"),
+          function (field) { if (!field.disabled) { field.value = ""; } });
+        document.getElementById("field-phone").value = "+55";
+        document.getElementById("upload-state").textContent =
+          "O arquivo foi carregado com sucesso";
+      }, 50);
+    });
+
+    // The phone field is masked and adds the country code itself. A mask reads keystrokes,
+    // not an assigned value, so a programmatic fill is reverted here exactly as it is there.
+    (function () {
+      var phone = document.getElementById("field-phone");
+      var typed = false;
+      var last = phone.value;
+      phone.addEventListener("keydown", function () { typed = true; });
+      phone.addEventListener("input", function () {
+        if (!typed) { phone.value = last; return; }
+        var digits = phone.value.replace(/\D/g, "");
+        if (digits.indexOf("55") !== 0) { digits = "55" + digits; }
+        var national = digits.slice(2);
+        phone.value = national
+          ? "+55 (" + national.slice(0, 2) + ") " + national.slice(2)
+          : "+55";
+        last = phone.value;
+        typed = false;
+      });
+    })();
+
+    document.getElementById("application").addEventListener("submit", function (event) {
+      event.preventDefault();
+      var form = event.target;
+      var missing = ["name", "email", "confirmEmail", "linkedin", "salaryExpectation.CLT"].filter(function (field) {
+        return !form.elements[field].value.trim();
+      });
+      if (form.elements["phone"].value.replace(/\D/g, "").length < 12) { missing.push("phone"); }
+      if (!form.elements["resume"].files.length) { missing.push("resume"); }
+      if (!document.getElementById("field-terms").checked) { missing.push("terms"); }
+      var outcome = document.getElementById("outcome");
+      if (missing.length) {
+        outcome.textContent = "Preencha os campos obrigatórios: " + missing.join(", ");
+        return;
+      }
+      if (form.elements["email"].value.trim() !== form.elements["confirmEmail"].value.trim()) {
+        outcome.textContent = "Os emails não conferem.";
+        return;
+      }
+      // The point of this stand-in: the form is taken, and the platform asks its
+      // screening questions before the application counts. Answering them completes it.
+      if (!window.__screening) {
+        window.__screening = true;
+        // The real screen: a dialog, fields named by the question id, its own consent
+        // about sensitive data, and its own submit button.
+        outcome.innerHTML = "<div role=\"dialog\">" +
+          "<h2>Você está quase terminando</h2>" +
+          "<p>Quantos anos de experiência em/com .NET você tem?</p>" +
+          "<input name=\"142139\" type=\"number\" />" +
+          "<p>Você aceita trabalhar presencialmente?</p>" +
+          // The real dialog names its radios after nothing: a generated id, values
+          // true/false, and the input itself clipped to a single pixel.
+          "<label><input type=\"radio\" name=\"radio-_r_k_\" value=\"true\"" +
+          " style=\"clip:rect(0,0,0,0);width:1px;height:1px\" />Sim</label>" +
+          "<label><input type=\"radio\" name=\"radio-_r_k_\" value=\"false\"" +
+          " style=\"clip:rect(0,0,0,0);width:1px;height:1px\" />Não</label>" +
+          "<label><input id=\"screening-consent\" type=\"checkbox\" />Estou ciente de que meus " +
+          "dados, inclusive sensíveis, podem ser tratados para fins de recrutamento.</label>" +
+          "<button type=\"submit\">Finalizar candidatura</button>" +
+          "</div>";
+        document.querySelector("[role=dialog] button[type=submit]").addEventListener(
+          "click", finishScreening
+        );
+        return;
+      }
+      return;
+    });
+
+    function finishScreening(event) {
+      event.preventDefault();
+      var outcome = document.getElementById("outcome");
+      var unanswered = [];
+      var written = document.getElementsByName("142139")[0];
+      if (!written || !written.value.trim()) { unanswered.push("142139"); }
+      var picked = document.querySelector("input[name='radio-_r_k_']:checked");
+      if (!picked) { unanswered.push("142140"); }
+      if (unanswered.length) {
+        outcome.textContent = "Essa pergunta é obrigatória. Responda para continuar.";
+        return;
+      }
+      if (!document.getElementById("screening-consent").checked) {
+        outcome.textContent = "É necessário aceitar o tratamento dos dados.";
+        return;
+      }
+      // The screening path ends in the platform's other confirmation copy.
+      outcome.innerHTML = "<h2>Obrigado pela sua candidatura!</h2>" +
+        "<p>Você acabou de se candidatar à vaga Desenvolvedor(a) .NET Júnior/Pleno da " +
+        "empresa Agenda Digital Ltda.</p>";
+    }
+  </script>
+</body>
+</html>

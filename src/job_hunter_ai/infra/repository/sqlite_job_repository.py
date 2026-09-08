@@ -6,7 +6,10 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Self
 
-from job_hunter_ai.domain.entities.application_result import ApplicationResult
+from job_hunter_ai.domain.entities.application_result import (
+    ApplicationResult,
+    ApplicationStatus,
+)
 from job_hunter_ai.domain.entities.job import Job
 from job_hunter_ai.domain.time_utils import from_iso_utc, to_iso_utc, utc_now
 from job_hunter_ai.infra.repository.migrations_runner import apply_migrations
@@ -86,6 +89,25 @@ class SqliteJobRepository:
                     to_iso_utc(applied_at),
                 ),
             )
+
+    def get_applications(self, job_id: str) -> list[ApplicationResult]:
+        """The attempts recorded for this job, oldest first — the history is append-only."""
+        rows = self._connection.execute(
+            "SELECT job_id, method, status, applier, detail, applied_at FROM applications"
+            " WHERE job_id = ? ORDER BY applied_at",
+            (job_id,),
+        ).fetchall()
+        return [self._to_application(row) for row in rows]
+
+    def _to_application(self, row: Any) -> ApplicationResult:
+        return ApplicationResult(
+            job_id=row["job_id"],
+            method=row["method"],
+            status=ApplicationStatus(row["status"]),
+            applier=row["applier"],
+            detail=row["detail"] or "",
+            applied_at=from_iso_utc(row["applied_at"]),
+        )
 
     def _to_row(self, job: Job) -> dict[str, Any]:
         return {

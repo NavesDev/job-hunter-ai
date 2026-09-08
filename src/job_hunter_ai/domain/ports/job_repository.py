@@ -18,3 +18,7 @@ class JobRepository(Protocol):
     def save_application(self, result: ApplicationResult) -> None:
         """Record the outcome of an application attempt."""
         ...
+
+    def get_applications(self, job_id: str) -> list[ApplicationResult]:
+        """Every attempt recorded for this job, oldest first."""
+        ...
