@@ -89,7 +89,13 @@ browser_profile_dir: "config/local/browser-profile"   # a profile you logged int
 `detail`, nothing sent. `status="sent"` is returned only when GeekHunter answers with its
 own confirmation; anything else is `failed`, recorded in the history with the reason.
 
-When the confirmation never arrives, the attempt is genuinely ambiguous — the form may have
+Some jobs do not end at that form. GeekHunter answers a submission with its own screening
+questions (`Você está quase terminando`) and the candidacy stays unfinished until they are
+answered. The applier recognizes that screen, reports `APPLIER_ERROR` naming every question
+it asks, and stops — answering for the candidate would mean inventing a fact about them, so
+the questions come back for you to answer on the job page. Nothing is re-submitted.
+
+When no confirmation and no screening screen arrive, the attempt is genuinely ambiguous — the form may have
 been refused, or accepted and answered differently — so `APPLIER_ERROR` quotes the text the
 page ended on, names the URL it ended at, and keeps the page itself under `diagnostics_dir`
 (`config/local/diagnostics` by default). The candidate's own values are taken out of the

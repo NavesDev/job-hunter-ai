@@ -16,6 +16,7 @@ No test in this suite reaches the network — see [TESTING.md](../../../docs/TES
 | `job-detail-without-json-ld.html` | a detail page whose `JobPosting` block vanished (the site changed shape) |
 | `job-with-form.html` | **not a recording** — the application form as an anonymous visitor sees it |
 | `job-with-form-unconfirmed.html` | the same form, answering a valid submission with a failure instead of the confirmation |
+| `job-with-form-screening.html` | the same form, answering a valid submission with the platform's screening questions |
 | `job-with-form-logged-in.html` | the same form as a signed-in candidate sees it: email filled and locked |
 
 `job-with-form.html` is the one file here that was written rather than recorded. It

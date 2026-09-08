@@ -305,13 +305,21 @@ def test_form_applier_should_leave_the_email_alone_when_the_session_already_fill
 
 
 def unconfirmed_job_at(site: str) -> Job:
+    return job_page(site, "job-with-form-unconfirmed.html")
+
+
+def screening_job_at(site: str) -> Job:
+    return job_page(site, "job-with-form-screening.html")
+
+
+def job_page(site: str, page: str) -> Job:
     job = job_at(site)
     return Job(
         id=job.id,
         source=job.source,
         title=job.title,
         company=job.company,
-        url=f"{site}/job-with-form-unconfirmed.html",
+        url=f"{site}/{page}",
     )
 
 
@@ -352,3 +360,48 @@ def test_form_applier_should_never_put_the_candidates_values_in_the_error(site, 
         subject.apply(unconfirmed_job_at(site), profile)
     assert profile.contact_email not in str(error.value)
     assert profile.extra_fields["phone"] not in str(error.value)
+
+
+def test_form_applier_should_report_the_screening_questions_the_platform_asks(
+    site, profile, tmp_path
+):
+    # Arrange
+    subject = applier(diagnostics_dir=str(tmp_path / "diagnostics"), timeout_ms=5000)
+
+    # Act / Assert
+    with pytest.raises(ApplierError) as error:
+        subject.apply(screening_job_at(site), profile)
+    message = str(error.value)
+    assert "Quantos anos de experiência em/com .NET você tem?" in message
+    assert "Você aceita trabalhar presencialmente?" in message
+    assert "screening questions" in message
+
+
+def test_form_applier_should_not_call_a_screening_screen_an_unconfirmed_application(
+    site, profile, tmp_path
+):
+    # Arrange
+    subject = applier(diagnostics_dir=str(tmp_path / "diagnostics"), timeout_ms=5000)
+
+    # Act / Assert
+    with pytest.raises(ApplierError) as error:
+        subject.apply(screening_job_at(site), profile)
+    assert "may or may not have gone through" not in str(error.value)
+
+
+def test_form_applier_should_answer_no_screening_question_on_the_candidates_behalf(
+    site, profile, tmp_path
+):
+    # Arrange
+    subject = applier(diagnostics_dir=str(tmp_path / "diagnostics"), timeout_ms=5000)
+
+    # Act
+    with pytest.raises(ApplierError):
+        subject.apply(screening_job_at(site), profile)
+
+    # Assert
+    saved = list((tmp_path / "diagnostics").glob("unconfirmed-*.html"))
+    assert len(saved) == 1
+    assert 'name="screening-142139" type="number" value=' not in saved[0].read_text(
+        encoding="utf-8"
+    )

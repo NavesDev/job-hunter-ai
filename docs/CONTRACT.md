@@ -101,8 +101,8 @@ empty result — a source that finds nothing where it expected jobs raises inste
 returning `[]`.
 
 `APPLIER_ERROR` means an applier could not complete the attempt on the platform: the
-page no longer has the form it drives, the session expired, or the platform never
-confirmed the application. The attempt is recorded as `status="failed"` before the
+page no longer has the form it drives, the session expired, the platform asked screening
+questions only the candidate can answer, or it never confirmed the application. The attempt is recorded as `status="failed"` before the
 error propagates — an application is never reported as sent without the platform's
 own confirmation.
 

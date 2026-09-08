@@ -11,6 +11,7 @@ when the platform itself says so: the confirmation text is the evidence, never a
 successful click.
 """
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -24,12 +25,14 @@ from job_hunter_ai.infra.appliers import geekhunter_salary as salary
 FORM_SELECTOR = "form:has(input[name='name'])"
 SUBMIT_SELECTOR = "button[type='submit']"
 CONFIRMATION_TEXT = "Candidatura Completa"
+SCREENING_TEXT = "Você está quase terminando"
 RESUME_UPLOADED_TEXT = "carregado com sucesso"
 SALARY_FIELD_PREFIX = "salaryExpectation"
 REQUIRED_EXTRA_FIELDS = ("phone", "linkedin")
 DEFAULT_TIMEOUT_MS = 30_000
 DEFAULT_DIAGNOSTICS_DIR = Path("config/local/diagnostics")
 SNIPPET_LIMIT = 320
+_POLL_MS = 250
 
 
 class GeekHunterFormApplier:
@@ -255,11 +258,41 @@ class GeekHunterFormApplier:
         return value
 
     def _submit_and_confirm(self, page: Any, url: str, values: dict[str, str]) -> None:
+        """Wait for the platform's own word, and tell the two answers it can give apart.
+
+        A form GeekHunter accepts does not always end the application: a job with
+        screening questions answers with them instead of the confirmation, and the
+        candidacy sits unfinished until they are answered. That is not the same failure
+        as a form that was refused, and it must not read like one.
+        """
         page.locator(SUBMIT_SELECTOR).first.click()
-        try:
-            page.get_by_text(CONFIRMATION_TEXT).first.wait_for(timeout=self._timeout_ms)
-        except Exception as exc:
-            raise ApplierError(self._unconfirmed(page, url, values)) from exc
+        confirmation = page.get_by_text(CONFIRMATION_TEXT).first
+        screening = page.get_by_text(SCREENING_TEXT).first
+        deadline = time.monotonic() + self._timeout_ms / 1000
+        while time.monotonic() < deadline:
+            if _is_showing(confirmation):
+                return
+            if _is_showing(screening):
+                raise ApplierError(self._screening(page, url))
+            page.wait_for_timeout(_POLL_MS)
+        raise ApplierError(self._unconfirmed(page, url, values))
+
+    def _screening(self, page: Any, url: str) -> str:
+        """Hand the questions back: only the candidate knows their own answers."""
+        questions = _questions(page)
+        asked = " ".join(f"`{question}`" for question in questions) if questions else ""
+        return " ".join(
+            part
+            for part in (
+                f"geekhunter took the form for {url} and is asking screening questions"
+                " before the application counts;",
+                f"it asks {asked}." if asked else "it does not say which on the page.",
+                "answer them on the job page — nothing here can answer for you,"
+                " and nothing else was sent.",
+                self._saved_page(page, url),
+            )
+            if part
+        )
 
     def _unconfirmed(self, page: Any, url: str, values: dict[str, str]) -> str:
         """Say what the platform answered instead, so the next run is not blind.
@@ -325,6 +358,24 @@ class GeekHunterFormApplier:
             detail=f"geekhunter confirmed the application for `{job.title}`",
             applied_at=utc_now(),
         )
+
+
+def _is_showing(locator: Any) -> bool:
+    """Whether the element is on the page right now, without waiting for it to appear."""
+    try:
+        return bool(locator.count()) and bool(locator.is_visible())
+    except Exception:
+        return False  # a page mid-navigation answers nothing; the next poll asks again
+
+
+def _questions(page: Any) -> list[str]:
+    """The screening questions as the page words them, in the order it asks them."""
+    try:
+        text = str(page.locator("body").first.inner_text())
+    except Exception:
+        return []
+    asked = [" ".join(line.split()) for line in text.splitlines() if line.strip().endswith("?")]
+    return list(dict.fromkeys(asked))
 
 
 def _both_ends(text: str) -> str:

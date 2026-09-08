@@ -6,6 +6,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ### Fixed
 
+- `apply-job --method form` recognizes GeekHunter's screening questions. A job can answer an
+  accepted form with questions of its own instead of the confirmation, leaving the candidacy
+  unfinished; the applier now reports `APPLIER_ERROR` naming every question asked, instead of
+  calling it an application that may or may not have gone through. It answers none of them —
+  only the candidate knows their own answers.
 - `apply-job --method form` no longer reports an unconfirmed application without saying why.
   The error now quotes the text the page ended on, names the URL, and keeps the page under
   `diagnostics_dir` (`config/local/diagnostics`) — the candidate's own values scrubbed from
