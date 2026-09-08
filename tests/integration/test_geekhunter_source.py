@@ -14,6 +14,11 @@ from tests.fakes.http_client import (
     recorded_client,
 )
 
+
+def source_over(client: FakeHttpClient) -> GeekHunterJobSource:
+    return GeekHunterJobSource(client)
+
+
 FIRST_JOB_URL = "https://www.geekhunter.com/pt/code-group/jobs/analista-de-sistemas-pleno-senior--4"
 FIRST_JOB_IDENTIFIER = "c1372dc3f8f7efcc1fbad13e64835a14ce9a7d15b1ba20c9f026d7a28dcdeebf"
 
@@ -222,3 +227,27 @@ def test_geekhunter_source_should_raise_invalid_input_when_a_fetch_filter_is_unk
         source.fetch(max_length=1, filters={"seniority": "senior"})
     assert "seniority" in str(error.value)
     assert client.requested == []
+
+
+def test_geekhunter_source_should_return_what_it_collected_when_the_listing_ends_early():
+    # Arrange
+    client = client_over_both_listings()
+    client.missing = frozenset({f"{LISTING}?page=2"})
+
+    # Act
+    jobs = source_over(client).fetch(max_length=25)
+
+    # Assert
+    assert len(jobs) == 10  # the single page the filtered listing had
+    assert f"{LISTING}?page=2" in client.requested
+
+
+def test_geekhunter_source_should_raise_source_error_when_the_listing_itself_is_gone():
+    # Arrange
+    client = client_over_both_listings()
+    client.missing = frozenset({f"{LISTING}?page=1"})
+
+    # Act / Assert
+    with pytest.raises(SourceError) as error:
+        source_over(client).fetch(max_length=3)
+    assert "404" in str(error.value)

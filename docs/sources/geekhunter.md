@@ -133,3 +133,8 @@ The source raises `SOURCE_ERROR` rather than returning fewer jobs: a missing `It
 a missing `JobPosting`, a job with no title or no company, an empty listing. That error
 means the page changed shape — re-record the fixtures deliberately, and let the diff be
 the evidence.
+
+One `404` is not that error: past its last page GeekHunter answers `404` instead of an
+empty listing, and a filtered listing is often shorter than `--max-length` asks for. That
+is the end of the listing, so the run returns the jobs it collected. A `404` on the first
+page still raises — there the listing itself is gone.

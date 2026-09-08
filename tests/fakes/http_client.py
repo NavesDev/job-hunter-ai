@@ -5,6 +5,8 @@ import re
 from hashlib import sha256
 from pathlib import Path
 
+from job_hunter_ai.domain.errors import PageNotFoundError
+
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "geekhunter"
 
 LISTING = "https://www.geekhunter.com/pt/vagas"
@@ -17,15 +19,23 @@ def fixture(name: str) -> str:
 class FakeHttpClient:
     """Serves recorded pages by URL and records every request, in order."""
 
-    def __init__(self, pages: dict[str, str], failure: Exception | None = None):
+    def __init__(
+        self,
+        pages: dict[str, str],
+        failure: Exception | None = None,
+        missing: frozenset[str] | None = None,
+    ):
         self.pages = pages
         self.failure = failure
+        self.missing = missing or frozenset()
         self.requested: list[str] = []
 
     def get(self, url: str) -> str:
         self.requested.append(url)
         if self.failure is not None:
             raise self.failure
+        if url in self.missing:
+            raise PageNotFoundError(f"geekhunter answered 404 for {url}")
         try:
             return self.pages[url]
         except KeyError as exc:

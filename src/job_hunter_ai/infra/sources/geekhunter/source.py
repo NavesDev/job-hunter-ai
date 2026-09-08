@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 from job_hunter_ai.domain.entities.job import Job
-from job_hunter_ai.domain.errors import SourceError
+from job_hunter_ai.domain.errors import PageNotFoundError, SourceError
 from job_hunter_ai.domain.job_id import build_job_id
 from job_hunter_ai.domain.time_utils import utc_now
 from job_hunter_ai.infra.sources.geekhunter import parser
@@ -41,10 +41,21 @@ class GeekHunterJobSource:
         return [self._job(url, collected_at) for url in urls]
 
     def _job_urls(self, max_length: int, filters: dict[str, str]) -> list[str]:
+        """The job URLs of as many listing pages as `max_length` needs, or as exist.
+
+        A filtered listing is often shorter than the run asks for, and the platform
+        answers `404` past its last page instead of an empty one — that is the end of
+        the listing, not a failure, so the jobs already collected are returned.
+        """
         urls: list[str] = []
         for page in range(1, MAX_LISTING_PAGES + 1):
             listing_url = self._listing_url(page, filters)
-            found = parser.listing_job_urls(self._http.get(listing_url), listing_url)
+            try:
+                found = parser.listing_job_urls(self._http.get(listing_url), listing_url)
+            except PageNotFoundError:
+                if page == 1:
+                    raise  # no first page at all: the listing moved, and nothing was collected
+                break
             urls.extend(url for url in found if url not in urls)
             if len(urls) >= max_length:
                 break

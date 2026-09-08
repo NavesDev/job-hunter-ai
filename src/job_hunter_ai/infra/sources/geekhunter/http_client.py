@@ -10,7 +10,7 @@ import urllib.error
 import urllib.request
 from typing import Protocol
 
-from job_hunter_ai.domain.errors import SourceError
+from job_hunter_ai.domain.errors import PageNotFoundError, SourceError
 
 DEFAULT_USER_AGENT = "job-hunter-ai/0.1 (+https://github.com/NavesDev/job-hunter-ai)"
 DEFAULT_TIMEOUT_SECONDS = 30.0
@@ -44,7 +44,10 @@ class UrllibHttpClient:
             with urllib.request.urlopen(request, timeout=self._timeout) as response:
                 body: bytes = response.read()
         except urllib.error.HTTPError as exc:
-            raise SourceError(f"geekhunter answered {exc.code} for {url}") from exc
+            message = f"geekhunter answered {exc.code} for {url}"
+            if exc.code == 404:
+                raise PageNotFoundError(message) from exc
+            raise SourceError(message) from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise SourceError(f"could not reach {url}: {exc}") from exc
         return body.decode("utf-8", errors="replace")

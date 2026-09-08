@@ -4,6 +4,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ## [Unreleased]
 
+### Fixed
+
+- `list-jobs --source geekhunter` no longer fails when the listing is shorter than the run
+  asked for. GeekHunter answers `404` past the last page instead of an empty one, which is
+  the end of the listing and not a failure: the source now returns what it collected. A `404`
+  on the very first page still raises `SOURCE_ERROR` — there the listing itself is gone.
+
 ### Added
 
 - `list-jobs --source geekhunter`: collects jobs from GeekHunter's public listing, reading the

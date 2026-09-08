@@ -6,18 +6,21 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from job_hunter_ai.domain.errors import SourceError
+from job_hunter_ai.domain.errors import PageNotFoundError, SourceError
 from job_hunter_ai.infra.sources.geekhunter.http_client import UrllibHttpClient
 
 NO_PACE = 0.0
 
 
+_REFUSED = {"/forbidden": 403, "/missing": 404}
+
+
 class _Handler(BaseHTTPRequestHandler):
-    """Echoes the received user-agent, and refuses `/forbidden` like the real CDN does."""
+    """Echoes the user-agent, refuses `/forbidden` and has no `/missing`, like the real site."""
 
     def do_GET(self) -> None:
-        if self.path == "/forbidden":
-            self.send_response(403)
+        if self.path in _REFUSED:
+            self.send_response(_REFUSED[self.path])
             self.end_headers()
             return
         body = f"user-agent: {self.headers.get('User-Agent')}".encode()
@@ -89,3 +92,14 @@ def test_http_client_should_keep_a_minimum_interval_between_two_requests(server)
 
     # Assert
     assert slept[0] >= 0.2
+
+
+def test_http_client_should_raise_page_not_found_when_the_page_does_not_exist(server):
+    # Arrange
+    client = UrllibHttpClient(min_request_interval_seconds=NO_PACE)
+
+    # Act / Assert
+    with pytest.raises(PageNotFoundError) as error:
+        client.get(f"{server}/missing")
+    assert error.value.code == "SOURCE_ERROR"  # a 404 is still a source failure to a caller
+    assert "404" in str(error.value)
