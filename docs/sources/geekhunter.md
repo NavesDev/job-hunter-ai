@@ -110,6 +110,12 @@ out raises `INVALID_INPUT` **before** the browser opens: discovering it on the s
 the form already submitted would leave the candidacy half-made. Both steps happen in one
 run, so the form is submitted once.
 
+The screening screen carries a consent of its own, separate from the form's Terms box: it
+declares that the candidate's data, sensitive included, may be processed for recruitment
+and diversity purposes. The same `accept_terms: true` covers it — without that setting
+nothing is submitted at all — and it is named here so that what gets accepted is never a
+surprise.
+
 Applying without the answers submits nothing: the run reports `APPLIER_ERROR` naming every
 question asked. The applier answers none of them on its own — these are claims about the
 candidate's experience, and inventing one would make it in their name.

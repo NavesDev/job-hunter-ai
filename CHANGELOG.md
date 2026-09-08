@@ -6,6 +6,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ### Fixed
 
+- `apply-job --method form` drives GeekHunter's real screening screen: a dialog whose
+  fields are named by the question's own id, with its own consent about sensitive data
+  (covered by `accept_terms`, and documented) and its own submit button. The shape assumed
+  before came from the stand-in fixture, not the platform.
 - `apply-job --method form` fills every expected-salary field the form shows, not only the
   first. A job open to more than one contract type asks for one expectation per type
   (`salaryExpectation.CLT` **and** `.PJ`), each required, and the form was being refused

@@ -541,3 +541,14 @@ def test_form_applier_should_raise_invalid_input_when_a_contract_asked_for_has_n
     with pytest.raises(InvalidInputError) as error:
         subject.apply(job, clt_only)
     assert "PJ" in str(error.value)
+
+
+def test_form_applier_should_refuse_the_screening_consent_when_the_terms_were_not_accepted(
+    site, profile
+):
+    # Arrange
+    subject = GeekHunterFormApplier({"accept_terms": False, "timeout_ms": 5000})
+
+    # Act / Assert
+    with pytest.raises(InvalidInputError):
+        subject.apply(screening_job_at(site), profile, answers=ANSWERS)

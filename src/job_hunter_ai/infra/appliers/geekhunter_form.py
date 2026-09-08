@@ -28,7 +28,7 @@ FORM_SELECTOR = "form:has(input[name='name'])"
 SUBMIT_SELECTOR = "button[type='submit']"
 CONFIRMATION_TEXT = "Candidatura Completa"
 SCREENING_TEXT = "Você está quase terminando"
-_SCREENING_FIELD = "screening-"
+SCREENING_DIALOG = "[role='dialog']"
 RESUME_UPLOADED_TEXT = "carregado com sucesso"
 SALARY_FIELD_PREFIX = "salaryExpectation"
 REQUIRED_EXTRA_FIELDS = ("phone", "linkedin")
@@ -324,17 +324,38 @@ class GeekHunterFormApplier:
         """
         if not answers:
             raise ApplierError(diagnostics.screening(page, url, self._diagnostics_dir))
+        dialog = page.locator(SCREENING_DIALOG).last
         for identifier, answer in answers.items():
-            field = page.locator(f"[name='{_SCREENING_FIELD}{identifier}']").first
+            # The screening field carries the question's own id as its name.
+            field = dialog.locator(f"[name='{identifier}']").first
             if not diagnostics.is_showing(field):
                 raise ApplierError(
                     f"geekhunter asks a screening question this page does not name as "
-                    f"`{_SCREENING_FIELD}{identifier}`; the questions changed shape and "
-                    f"nothing was answered. "
+                    f"`{identifier}`; the questions changed shape and nothing was answered. "
                     f"{diagnostics.saved_page(page, url, self._diagnostics_dir)}"
                 )
             field.fill(answer)
-        page.locator(SUBMIT_SELECTOR).first.click()
+        self._accept_screening_consent(dialog)
+        dialog.locator(SUBMIT_SELECTOR).last.click()
+
+    def _accept_screening_consent(self, dialog: Any) -> None:
+        """The screening screen asks its own consent, about sensitive data.
+
+        It is not the Terms box on the form: it declares that the candidate's data,
+        sensitive included, may be processed for recruitment and diversity purposes. The
+        same `accept_terms` covers it — the applier already refuses to submit anything
+        without that — and it is named in the result, so what was accepted is never
+        implicit.
+        """
+        checkbox = dialog.locator("input[type='checkbox']")
+        if checkbox.count() == 0 or checkbox.first.is_checked():
+            return
+        checkbox.first.dispatch_event("click")
+        if not checkbox.first.is_checked():
+            raise ApplierError(
+                "could not tick the screening consent; the screen changed shape and an "
+                "application must never go out without it"
+            )
 
     def _result(self, job: Job, values: dict[str, str]) -> ApplicationResult:
         if not self._submit:

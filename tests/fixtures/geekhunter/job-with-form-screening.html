@@ -110,14 +110,30 @@
       // screening questions before the application counts. Answering them completes it.
       if (!window.__screening) {
         window.__screening = true;
-        outcome.innerHTML = "<h2>Você está quase terminando</h2>" +
+        // The real screen: a dialog, fields named by the question id, its own consent
+        // about sensitive data, and its own submit button.
+        outcome.innerHTML = "<div role=\"dialog\">" +
+          "<h2>Você está quase terminando</h2>" +
           "<p>Quantos anos de experiência em/com .NET você tem?</p>" +
-          "<input name=\"screening-142139\" type=\"number\" />" +
+          "<input name=\"142139\" type=\"number\" />" +
           "<p>Você aceita trabalhar presencialmente?</p>" +
-          "<input name=\"screening-142140\" type=\"text\" />";
+          "<input name=\"142140\" type=\"text\" />" +
+          "<label><input id=\"screening-consent\" type=\"checkbox\" />Estou ciente de que meus " +
+          "dados, inclusive sensíveis, podem ser tratados para fins de recrutamento.</label>" +
+          "<button type=\"submit\">Finalizar candidatura</button>" +
+          "</div>";
+        document.querySelector("[role=dialog] button[type=submit]").addEventListener(
+          "click", finishScreening
+        );
         return;
       }
-      var unanswered = ["screening-142139", "screening-142140"].filter(function (field) {
+      return;
+    });
+
+    function finishScreening(event) {
+      event.preventDefault();
+      var outcome = document.getElementById("outcome");
+      var unanswered = ["142139", "142140"].filter(function (field) {
         var input = document.getElementsByName(field)[0];
         return !input || !input.value.trim();
       });
@@ -125,10 +141,14 @@
         outcome.textContent = "Essa pergunta é obrigatória. Responda para continuar.";
         return;
       }
+      if (!document.getElementById("screening-consent").checked) {
+        outcome.textContent = "É necessário aceitar o tratamento dos dados.";
+        return;
+      }
       outcome.innerHTML = "<h2>Candidatura Completa!</h2>" +
         "<p>Parabéns! Você concluiu sua candidatura para a vaga Desenvolvedor(a) .NET " +
         "Júnior/Pleno.</p>";
-    });
+    }
   </script>
 </body>
 </html>
