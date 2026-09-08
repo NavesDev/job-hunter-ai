@@ -68,6 +68,30 @@ verified against the live site.
 
 The `manual` source takes no `--filter` and raises `INVALID_INPUT` when it gets one.
 
+## Signing in
+
+```bash
+login --source geekhunter
+```
+
+Applying anonymously works, but GeekHunter then holds the application until the candidate
+clicks a link it emails them — nothing is delivered while that inbox goes unread. Signed in,
+the platform ties the application to the account and takes it right away.
+
+The command keeps a session in a browser profile of the tool's own
+(`browser_profile_dir`, `config/local/browser-profile` by default), which `apply-job
+--method form` reuses. It signs in only when the profile has no session; `--force` clears
+the profile's cookies and signs in again. Credentials come from `.env`:
+
+```
+GEEKHUNTER_USERNAME=you@example.com
+GEEKHUNTER_PASSWORD=...
+```
+
+They are typed into the platform's own form and nowhere else — never a flag, never the
+output, never an error, never the history. A session that expires is one `login` away, so
+an agent can recover it without a human at the keyboard.
+
 ## Applying
 
 ```bash

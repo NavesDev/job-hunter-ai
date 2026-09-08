@@ -4,6 +4,7 @@ from typing import Any
 
 from job_hunter_ai.domain.entities.application_result import ApplicationResult
 from job_hunter_ai.domain.entities.job import Job
+from job_hunter_ai.domain.entities.session_result import SessionResult
 from job_hunter_ai.domain.time_utils import to_iso_utc
 
 
@@ -31,4 +32,15 @@ def application_result_to_payload(result: ApplicationResult) -> dict[str, Any]:
         "applier": result.applier,
         "detail": result.detail,
         "applied_at": to_iso_utc(result.applied_at) if result.applied_at else None,
+    }
+
+
+def session_result_to_payload(result: SessionResult) -> dict[str, Any]:
+    """The `login` contract: what the session is, and where the profile holding it lives."""
+    return {
+        "source": result.source,
+        "status": str(result.status),
+        "profile_dir": result.profile_dir,
+        "detail": result.detail,
+        "checked_at": to_iso_utc(result.checked_at) if result.checked_at else None,
     }

@@ -8,11 +8,13 @@ lazy, so a command never pays for — nor fails on — a dependency it does not 
 
 from pathlib import Path
 
-from job_hunter_ai.config.credentials import load_smtp_config
+from job_hunter_ai.config.credentials import load_platform_credentials, load_smtp_config
 from job_hunter_ai.config.sources import load_source_settings
 from job_hunter_ai.infra.appliers.email_applier import EmailApplier
 from job_hunter_ai.infra.appliers.geekhunter_form import GeekHunterFormApplier
 from job_hunter_ai.infra.appliers.registry import ANY_SOURCE, ApplierRegistry
+from job_hunter_ai.infra.sessions.geekhunter_session import GeekHunterSession
+from job_hunter_ai.infra.sessions.registry import SessionRegistry
 from job_hunter_ai.infra.sources.geekhunter import GeekHunterJobSource, UrllibHttpClient
 from job_hunter_ai.infra.sources.registry import SourceRegistry
 
@@ -47,3 +49,15 @@ def build_applier_registry(root: Path | None = None) -> ApplierRegistry:
             ("form", GeekHunterJobSource.name): geekhunter_form_applier,
         }
     )
+
+
+def build_session_registry(root: Path | None = None) -> SessionRegistry:
+    """The strategies that keep a platform session, each with its own credentials."""
+
+    def geekhunter_session() -> GeekHunterSession:
+        return GeekHunterSession(
+            load_platform_credentials(GeekHunterJobSource.name, root),
+            load_source_settings(GeekHunterJobSource.name, root),
+        )
+
+    return SessionRegistry({GeekHunterJobSource.name: geekhunter_session})

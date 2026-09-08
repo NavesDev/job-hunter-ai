@@ -1,6 +1,11 @@
 import pytest
 
-from job_hunter_ai.config.credentials import DEFAULT_PORT, load_smtp_config
+from job_hunter_ai.config.credentials import (
+    DEFAULT_PORT,
+    load_platform_credentials,
+    load_smtp_config,
+)
+from job_hunter_ai.domain.entities.platform_credentials import PlatformCredentials
 from job_hunter_ai.domain.errors import InvalidInputError
 
 REQUIRED = {
@@ -89,3 +94,44 @@ def test_load_smtp_config_should_not_put_the_password_in_the_error_when_it_is_mi
     # Assert
     assert "SMTP_PASSWORD" in str(error.value)
     assert "app-password" not in str(error.value)
+
+
+def test_load_platform_credentials_should_read_the_prefixed_variables(tmp_path, monkeypatch):
+    # Arrange
+    for name in ("GEEKHUNTER_USERNAME", "GEEKHUNTER_PASSWORD"):
+        monkeypatch.delenv(name, raising=False)
+    (tmp_path / ".env").write_text(
+        "GEEKHUNTER_USERNAME=ada@example.com\nGEEKHUNTER_PASSWORD=s3cr3t\n", encoding="utf-8"
+    )
+
+    # Act
+    credentials = load_platform_credentials("geekhunter", tmp_path)
+
+    # Assert
+    assert credentials.platform == "geekhunter"
+    assert credentials.username == "ada@example.com"
+    assert credentials.password == "s3cr3t"
+
+
+def test_load_platform_credentials_should_raise_when_one_is_missing(tmp_path, monkeypatch):
+    # Arrange
+    for name in ("GEEKHUNTER_USERNAME", "GEEKHUNTER_PASSWORD"):
+        monkeypatch.delenv(name, raising=False)
+    (tmp_path / ".env").write_text("GEEKHUNTER_USERNAME=ada@example.com\n", encoding="utf-8")
+
+    # Act / Assert
+    with pytest.raises(InvalidInputError) as error:
+        load_platform_credentials("geekhunter", tmp_path)
+    assert "GEEKHUNTER_PASSWORD" in str(error.value)
+
+
+def test_platform_credentials_should_never_show_the_password_when_printed():
+    # Arrange
+    credentials = PlatformCredentials(platform="geekhunter", username="ada", password="s3cr3t")
+
+    # Act
+    printed = repr(credentials)
+
+    # Assert
+    assert "s3cr3t" not in printed
+    assert credentials.scrub("failed with s3cr3t") == "failed with ***"

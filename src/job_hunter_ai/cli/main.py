@@ -11,9 +11,18 @@ import typer
 
 from job_hunter_ai.application.apply_job import ApplyJobUseCase
 from job_hunter_ai.application.list_jobs import DEFAULT_MAX_LENGTH, ListJobsUseCase
-from job_hunter_ai.cli.dependencies import build_applier_registry, build_source_registry
+from job_hunter_ai.application.login import LoginUseCase
+from job_hunter_ai.cli.dependencies import (
+    build_applier_registry,
+    build_session_registry,
+    build_source_registry,
+)
 from job_hunter_ai.cli.output import contract_command, emit_success
-from job_hunter_ai.cli.serializers import application_result_to_payload, job_to_payload
+from job_hunter_ai.cli.serializers import (
+    application_result_to_payload,
+    job_to_payload,
+    session_result_to_payload,
+)
 from job_hunter_ai.config.loader import load_config
 from job_hunter_ai.domain.errors import ApplierNotFoundError, InvalidInputError
 from job_hunter_ai.infra.appliers.geekhunter_salary import KINDS as SALARY_KINDS
@@ -23,6 +32,9 @@ SUPPORTED_METHODS = ("email", "form")
 
 list_jobs_app = typer.Typer(add_completion=False, help="List jobs from a registered source.")
 apply_job_app = typer.Typer(add_completion=False, help="Apply to an already listed job.")
+login_app = typer.Typer(
+    add_completion=False, help="Sign the tool's browser profile into a platform."
+)
 
 
 @list_jobs_app.command()
@@ -125,3 +137,20 @@ def apply_job(
             force=force,
         )
     emit_success(application_result_to_payload(result))
+
+
+@login_app.command()
+@contract_command
+def login(
+    source: Annotated[str, typer.Option("--source", help="Platform to sign in to.")],
+    force: Annotated[
+        bool, typer.Option("--force", help="Sign in again even when the profile has a session.")
+    ] = False,
+) -> None:
+    """Make sure the tool's browser profile holds a session for the platform.
+
+    The credentials come from `.env` and are never printed, logged or recorded.
+    """
+    strategy = build_session_registry().get(source)
+    result = LoginUseCase(strategy).execute(force=force)
+    emit_success(session_result_to_payload(result))

@@ -95,7 +95,7 @@ A single JSON object on stderr:
 {"error": "smtp connection refused", "code": "SMTP_ERROR"}
 ```
 
-Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`, `SOURCE_ERROR`, `APPLIER_ERROR`, `ALREADY_APPLIED`. A new code must be documented here before being used.
+Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`, `SOURCE_ERROR`, `APPLIER_ERROR`, `ALREADY_APPLIED`, `SESSION_ERROR`. A new code must be documented here before being used.
 
 `SOURCE_ERROR` means a source could not deliver its jobs: the platform refused the
 request, or the page no longer has the shape the source parses. It is never a silent
@@ -108,6 +108,9 @@ each value is checked against the question's own type and range **before** the b
 opens, raising `INVALID_INPUT` when it does not fit. Applying without them submits nothing:
 the run reports `APPLIER_ERROR` naming the questions. Nothing is ever answered on the
 candidate's behalf.
+
+`SESSION_ERROR` means the platform did not give a session: it refused the credentials, or
+the sign-in page could not be reached. The message never carries the password.
 
 `ALREADY_APPLIED` means the job already carries a `sent` or `pending` attempt in the local
 history: applying again would be a second candidacy in the candidate's name, and an
@@ -125,6 +128,34 @@ page no longer has the form it drives, the session expired, the platform asked s
 questions only the candidate can answer, or it never confirmed the application. The attempt is recorded as `status="failed"` before the
 error propagates — an application is never reported as sent without the platform's
 own confirmation.
+
+## `login`
+
+**Input** (flags):
+
+| Flag | Type | Required | Description |
+|---|---|---|---|
+| `--source` | string | yes | Platform to sign in to (`geekhunter`) |
+| `--force` | flag | no | Sign in again even when the profile already has a session |
+
+Credentials come from `.env` as `<SOURCE>_USERNAME` / `<SOURCE>_PASSWORD` and never appear
+in a flag, in the output, in an error or in the history. The session lives in the browser
+profile at `browser_profile_dir`, which `apply-job --method form` then reuses.
+
+**Output** (stdout), a `SessionResult`:
+
+```json
+{
+  "source": "geekhunter",
+  "status": "authenticated",
+  "profile_dir": "config/local/browser-profile",
+  "detail": "signed in with the credentials in .env",
+  "checked_at": "2026-09-08T17:30:00Z"
+}
+```
+
+`status` is `authenticated` (it signed in) or `already_authenticated` (the profile already
+had a session, and nothing was typed).
 
 ## Compatibility
 

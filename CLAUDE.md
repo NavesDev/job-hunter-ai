@@ -42,7 +42,7 @@ platform is a **new class plus a registry entry**, never an edit to `application
 | Pattern | Where | Why |
 |---|---|---|
 | Ports & Adapters | `domain/ports` + `infra/` | swap SQLite or SMTP without touching a use case |
-| Registry + Factory | `infra/sources/registry.py`, `infra/appliers/registry.py` | resolve `--source` and `(method, source)` by name; Open/Closed for new platforms |
+| Registry + Factory | `infra/sources/registry.py`, `infra/appliers/registry.py`, `infra/sessions/registry.py` | resolve `--source` and `(method, source)` by name; Open/Closed for new platforms |
 | Strategy | `JobSource`, `JobApplier` | one interchangeable implementation per platform |
 | Repository | `JobRepository` | persistence details never leak into `application/` |
 | Dependency Injection | use case constructors | `cli/dependencies.py` is the only composition root |

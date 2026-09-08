@@ -109,6 +109,19 @@ apply-job --job-id manual:d4979b84f109 --method email --email jobs@company.com -
 apply-job --job-id manual:d4979b84f109 --method form
 ```
 
+#### Signing in first
+
+```bash
+login --source geekhunter
+```
+
+Applying anonymously leaves the application waiting for a link GeekHunter emails you. Signed
+in, it is delivered right away and tied to your account. The session lives in the tool's own
+browser profile (`browser_profile_dir`) and is reused by `apply-job --method form`; the
+credentials come from `.env` (`GEEKHUNTER_USERNAME`, `GEEKHUNTER_PASSWORD`) and never reach
+a flag, the output, an error or the history. `--force` signs in again when a session went
+stale.
+
 #### GeekHunter's form
 
 ```bash

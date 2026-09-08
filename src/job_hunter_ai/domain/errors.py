@@ -39,5 +39,9 @@ class AlreadyAppliedError(JobHunterError):
     code = "ALREADY_APPLIED"
 
 
+class SessionError(JobHunterError):
+    code = "SESSION_ERROR"
+
+
 class ApplierError(JobHunterError):
     code = "APPLIER_ERROR"

@@ -51,6 +51,7 @@ Issues = "https://github.com/NavesDev/job-hunter-ai/issues"
 [project.scripts]
 list-jobs = "job_hunter_ai.cli.main:list_jobs_app"
 apply-job = "job_hunter_ai.cli.main:apply_job_app"
+login = "job_hunter_ai.cli.main:login_app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -115,7 +116,7 @@ source_modules = ["job_hunter_ai.infra"]
 forbidden_modules = ["job_hunter_ai.application", "job_hunter_ai.cli"]
 
 [[tool.importlinter.contracts]]
-name = "the browser stays inside the appliers"
+name = "the browser stays inside the appliers and the sessions"
 type = "forbidden"
 source_modules = [
   "job_hunter_ai.domain",
