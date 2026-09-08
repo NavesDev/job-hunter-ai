@@ -38,7 +38,10 @@ SIGN_IN_FORM = """<html><body>
   <p>{message}</p>
 </body></html>"""
 SIGNED_IN = "<html><body><h1>Dashboard</h1><p>Olá! Que bom ver você de novo.</p></body></html>"
-CHOOSER = "<html><body><h1>Bem-vindo!</h1><p>Você é empresa ou candidato?</p></body></html>"
+# The platform bounces a fresh browser here before it will show the candidate form.
+CHOOSER = """<html><body><h1>Bem-vindo!</h1><p>Você é empresa ou candidato?</p>
+  <a href="/pt/candidates/sign_in?chosen=1">SOU CANDIDATO</a>
+  <a href="/pt/companies/sign_in">SOU EMPRESA</a></body></html>"""
 DASHBOARD_PATH = "/v1/pt/candidates/dashboard"
 
 
@@ -53,11 +56,12 @@ class _Handler(BaseHTTPRequestHandler):
                 SIGNED_IN if signed_in else CHOOSER, location=None if signed_in else "/pt/entrar"
             )
             return
-        # Devise sends a signed-in visitor away from its own sign-in page.
-        self._send(
-            CHOOSER if signed_in else SIGN_IN_FORM.format(message=""),
-            location=DASHBOARD_PATH if signed_in else None,
-        )
+        if signed_in:
+            # Devise sends a signed-in visitor away from its own sign-in page.
+            self._send(CHOOSER, location=DASHBOARD_PATH)
+            return
+        # A browser that has not said which kind of user it is gets the chooser first.
+        self._send(SIGN_IN_FORM.format(message="") if "chosen=1" in self.path else CHOOSER)
 
     def do_POST(self) -> None:
         length = int(self.headers.get("Content-Length") or 0)
@@ -189,3 +193,15 @@ def test_session_should_not_call_a_covered_form_a_session(site, tmp_path):
     # Act / Assert
     with pytest.raises(SessionError):
         subject.ensure_session()  # a false `already_authenticated` would return instead
+
+
+def test_session_should_sign_in_through_the_company_or_candidate_chooser(site, tmp_path):
+    """The platform shows `empresa ou candidato?` before the form, and that is not an error."""
+    # Arrange
+    subject = session_over(site, tmp_path / "profile")
+
+    # Act
+    result = subject.ensure_session()
+
+    # Assert
+    assert result.status is SessionStatus.AUTHENTICATED

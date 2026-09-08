@@ -21,6 +21,7 @@ PASSWORD_FIELD = "input[name='candidate[password]']"
 REMEMBER_FIELD = "input[type='checkbox'][name='candidate[remember_me]']"
 SUBMIT_FIELD = "input[name='commit']"
 CONSENT_BUTTON = "ENTENDI E ACEITO"
+CANDIDATE_BUTTON = "SOU CANDIDATO"
 JOB_EMAIL_FIELD = "input[name='email']"
 _SETTLE_MS = 500
 
@@ -69,13 +70,42 @@ class GeekHunterSignIn:
         return bool(field.count()) and bool(field.first.is_disabled())
 
     def _open_sign_in(self, page: Any) -> None:
-        """Load the sign-in page and clear the consent banner that covers the form."""
+        """Get to the candidate sign-in form, through whatever the platform puts first.
+
+        Two things stand between a browser and that form: a consent banner covering it,
+        and the `empresa ou candidato?` chooser the platform bounces a fresh browser to.
+        Neither is an error — but a form that never appears reads as one, and a fill that
+        times out says nothing about why.
+        """
         page.goto(f"{self._base_url}{SIGN_IN_PATH}", wait_until="domcontentloaded")
         page.wait_for_load_state("networkidle")
+        self._dismiss_consent(page)
+        if not self._form_is_there(page):
+            self._choose_candidate(page)
+        if not self._form_is_there(page):
+            raise SessionError(
+                f"geekhunter served no candidate sign-in form at {page.url}; "
+                "the sign-in page changed shape"
+            )
+
+    def _dismiss_consent(self, page: Any) -> None:
         consent = page.get_by_text(CONSENT_BUTTON, exact=False)
         if consent.count() and consent.first.is_visible():
             consent.first.click()
             page.wait_for_timeout(_SETTLE_MS)
+
+    def _choose_candidate(self, page: Any) -> None:
+        """The chooser stands where the form was: `SOU CANDIDATO` leads back to it."""
+        chooser = page.get_by_text(CANDIDATE_BUTTON, exact=False)
+        if chooser.count() == 0 or not chooser.first.is_visible():
+            return
+        chooser.first.click()
+        page.wait_for_load_state("networkidle")
+        self._dismiss_consent(page)
+
+    def _form_is_there(self, page: Any) -> bool:
+        field = page.locator(PASSWORD_FIELD)
+        return bool(field.count()) and bool(field.first.is_visible())
 
     def _remember_me(self, page: Any) -> None:
         """Tick `Mantenha-me conectado`: it is what makes the platform remember at all."""
