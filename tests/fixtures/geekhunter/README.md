@@ -13,6 +13,7 @@ No test in this suite reaches the network — see [TESTING.md](../../../docs/TES
 | `listing-page-2.html` | `/pt/vagas?page=2`, the next 10 |
 | `listing-empty.html` | a listing that returns no job at all |
 | `job-detail-1.html` … `job-detail-3.html` | job detail pages with their `JobPosting` block |
+| `job-screening-questions.html` | a detail page whose app payload carries the job's screening questions (named apart from `job-detail-*` so it is not served as one) |
 | `job-detail-without-json-ld.html` | a detail page whose `JobPosting` block vanished (the site changed shape) |
 | `job-with-form.html` | **not a recording** — the application form as an anonymous visitor sees it |
 | `job-with-form-unconfirmed.html` | the same form, answering a valid submission with a failure instead of the confirmation |

@@ -58,6 +58,7 @@ The `geekhunter` source never returns an `apply_email` — the platform exposes 
 | `--email` | string | if `method=email` and the job carries no address | Recipient |
 | `--subject` | string | no | Subject; defaults to the local configuration |
 | `--salary` | `clt` \| `pj` \| `internship` | no | Which predefined salary expectation to offer |
+| `--answer` | `question-id=value`, repeatable | screening-dependent | Answer to a screening question of the job |
 | `--all-ready` | flag | no | Applies in batch |
 
 `--salary` never carries an amount: it names one of the expectations the profile already
@@ -99,6 +100,13 @@ Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`,
 request, or the page no longer has the shape the source parses. It is never a silent
 empty result — a source that finds nothing where it expected jobs raises instead of
 returning `[]`.
+
+A `geekhunter` job may ask screening questions after its form; they are recorded in the
+job's `raw` by `list-jobs`. Every mandatory one needs an `--answer question-id=value`, and
+each value is checked against the question's own type and range **before** the browser
+opens, raising `INVALID_INPUT` when it does not fit. Applying without them submits nothing:
+the run reports `APPLIER_ERROR` naming the questions. Nothing is ever answered on the
+candidate's behalf.
 
 `APPLIER_ERROR` means an applier could not complete the attempt on the platform: the
 page no longer has the form it drives, the session expired, the platform asked screening

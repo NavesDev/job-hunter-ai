@@ -66,7 +66,11 @@ class GeekHunterJobSource:
         return f"{self._base_url}{LISTING_PATH}?{query}"
 
     def _job(self, url: str, collected_at: datetime) -> Job:
-        posting = parser.job_posting(self._http.get(url), url)
+        page = self._http.get(url)
+        posting = parser.job_posting(page, url)
+        # The one field added to the payload: the questions the job asks after the form,
+        # which the JobPosting block omits and `apply-job --answer` is checked against.
+        posting[parser.SCREENING_KEY] = parser.screening_questions(page)
         external_id = self._external_id(posting, url)
         title = self._text(posting.get("title"))
         company = self._text(self._organization(posting).get("name"))

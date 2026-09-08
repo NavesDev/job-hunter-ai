@@ -89,11 +89,30 @@ browser_profile_dir: "config/local/browser-profile"   # a profile you logged int
 `detail`, nothing sent. `status="sent"` is returned only when GeekHunter answers with its
 own confirmation; anything else is `failed`, recorded in the history with the reason.
 
-Some jobs do not end at that form. GeekHunter answers a submission with its own screening
-questions (`Você está quase terminando`) and the candidacy stays unfinished until they are
-answered. The applier recognizes that screen, reports `APPLIER_ERROR` naming every question
-it asks, and stops — answering for the candidate would mean inventing a fact about them, so
-the questions come back for you to answer on the job page. Nothing is re-submitted.
+### Screening questions
+
+Some jobs do not end at that form: GeekHunter answers the submission with questions of its
+own (`Você está quase terminando`), and the candidacy stays unfinished until they are
+answered. `list-jobs` records them in the job's `raw`, so they are known before a browser
+opens:
+
+```bash
+list-jobs --source geekhunter --max-length 5 --filter searchTerm=rails
+# raw.screeningQuestions: [{"id": 142139, "name": "Quantos anos de experiência em/com Ruby
+#   on Rails você tem?", "answerType": "number", "mandatory": true, "minAnswer": 1}]
+
+apply-job --job-id geekhunter:eb228a61b659 --method form --answer 142139=2
+```
+
+One `--answer question-id=value` per question, repeatable. Every value is checked against
+the question it belongs to — type, range, offered options — and a mandatory question left
+out raises `INVALID_INPUT` **before** the browser opens: discovering it on the screen with
+the form already submitted would leave the candidacy half-made. Both steps happen in one
+run, so the form is submitted once.
+
+Applying without the answers submits nothing: the run reports `APPLIER_ERROR` naming every
+question asked. The applier answers none of them on its own — these are claims about the
+candidate's experience, and inventing one would make it in their name.
 
 When no confirmation and no screening screen arrive, the attempt is genuinely ambiguous — the form may have
 been refused, or accepted and answered differently — so `APPLIER_ERROR` quotes the text the

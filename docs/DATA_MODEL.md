@@ -37,6 +37,11 @@ CREATE TABLE IF NOT EXISTS schema_version (
 );
 ```
 
+`raw` is the source's own payload, with one documented addition: the `geekhunter` source
+stores the job's `screeningQuestions` alongside the `JobPosting` fields, because the
+platform omits them from its structured data and `apply-job --answer` is validated against
+them without touching the network. A job that asks none stores `[]`.
+
 Dates are always `TEXT` in ISO 8601 UTC (`2026-09-03T14:00:00Z`), matching the [CLI contract](CONTRACT.md). `raw` is serialized JSON — a native JSON type is not guaranteed in every SQLite build.
 
 ## Job identity

@@ -308,8 +308,37 @@ def unconfirmed_job_at(site: str) -> Job:
     return job_page(site, "job-with-form-unconfirmed.html")
 
 
-def screening_job_at(site: str) -> Job:
-    return job_page(site, "job-with-form-screening.html")
+def screening_job_at(site: str, questions: list[dict[str, object]] | None = None) -> Job:
+    job = job_page(site, "job-with-form-screening.html")
+    return Job(
+        id=job.id,
+        source=job.source,
+        title=job.title,
+        company=job.company,
+        url=job.url,
+        raw={"screeningQuestions": QUESTIONS if questions is None else questions},
+    )
+
+
+QUESTIONS = [
+    {
+        "id": 142139,
+        "name": "Quantos anos de experiência em/com .NET você tem?",
+        "answerType": "number",
+        "mandatory": True,
+        "minAnswer": 1,
+        "maxAnswer": None,
+        "options": None,
+    },
+    {
+        "id": 142140,
+        "name": "Você aceita trabalhar presencialmente?",
+        "answerType": "boolean",
+        "mandatory": True,
+        "options": None,
+    },
+]
+ANSWERS = {"142139": "2", "142140": "sim"}
 
 
 def job_page(site: str, page: str) -> Job:
@@ -370,7 +399,7 @@ def test_form_applier_should_report_the_screening_questions_the_platform_asks(
 
     # Act / Assert
     with pytest.raises(ApplierError) as error:
-        subject.apply(screening_job_at(site), profile)
+        subject.apply(screening_job_at(site, questions=[]), profile)
     message = str(error.value)
     assert "Quantos anos de experiência em/com .NET você tem?" in message
     assert "Você aceita trabalhar presencialmente?" in message
@@ -385,7 +414,7 @@ def test_form_applier_should_not_call_a_screening_screen_an_unconfirmed_applicat
 
     # Act / Assert
     with pytest.raises(ApplierError) as error:
-        subject.apply(screening_job_at(site), profile)
+        subject.apply(screening_job_at(site, questions=[]), profile)
     assert "may or may not have gone through" not in str(error.value)
 
 
@@ -397,7 +426,7 @@ def test_form_applier_should_answer_no_screening_question_on_the_candidates_beha
 
     # Act
     with pytest.raises(ApplierError):
-        subject.apply(screening_job_at(site), profile)
+        subject.apply(screening_job_at(site, questions=[]), profile)
 
     # Assert
     saved = list((tmp_path / "diagnostics").glob("unconfirmed-*.html"))
@@ -405,3 +434,62 @@ def test_form_applier_should_answer_no_screening_question_on_the_candidates_beha
     assert 'name="screening-142139" type="number" value=' not in saved[0].read_text(
         encoding="utf-8"
     )
+
+
+def test_form_applier_should_complete_the_application_when_every_answer_is_given(site, profile):
+    # Arrange
+    subject = applier(timeout_ms=5000)
+
+    # Act
+    result = subject.apply(screening_job_at(site), profile, answers=ANSWERS)
+
+    # Assert
+    assert result.status is ApplicationStatus.SENT
+
+
+def test_form_applier_should_raise_invalid_input_before_the_browser_when_an_answer_is_missing(
+    site, profile
+):
+    # Arrange
+    subject = applier(timeout_ms=5000)
+
+    # Act / Assert
+    with pytest.raises(InvalidInputError) as error:
+        subject.apply(screening_job_at(site), profile, answers={"142139": "2"})
+    assert "142140" in str(error.value)
+    assert "Você aceita trabalhar presencialmente?" in str(error.value)
+
+
+def test_form_applier_should_raise_invalid_input_when_an_answer_does_not_fit_the_question(
+    site, profile
+):
+    # Arrange
+    subject = applier(timeout_ms=5000)
+
+    # Act / Assert
+    with pytest.raises(InvalidInputError) as error:
+        subject.apply(screening_job_at(site), profile, answers={**ANSWERS, "142139": "dois"})
+    assert "takes a number" in str(error.value)
+
+
+def test_form_applier_should_raise_invalid_input_when_the_job_never_asked_the_question(
+    site, profile
+):
+    # Arrange
+    subject = applier(timeout_ms=5000)
+
+    # Act / Assert
+    with pytest.raises(InvalidInputError) as error:
+        subject.apply(screening_job_at(site), profile, answers={**ANSWERS, "999": "x"})
+    assert "999" in str(error.value)
+
+
+def test_form_applier_should_not_ask_for_answers_on_a_dry_run(site, profile):
+    # Arrange
+    subject = applier(submit=False, timeout_ms=5000)
+
+    # Act
+    result = subject.apply(screening_job_at(site), profile)
+
+    # Assert
+    assert result.status is ApplicationStatus.SKIPPED

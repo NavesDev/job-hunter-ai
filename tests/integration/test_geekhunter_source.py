@@ -4,6 +4,7 @@ import pytest
 
 from job_hunter_ai.domain.errors import InvalidInputError, SourceError
 from job_hunter_ai.domain.job_id import build_job_id
+from job_hunter_ai.domain.time_utils import utc_now
 from job_hunter_ai.infra.sources.geekhunter import GeekHunterJobSource
 from tests.fakes.http_client import (
     LISTING,
@@ -251,3 +252,31 @@ def test_geekhunter_source_should_raise_source_error_when_the_listing_itself_is_
     with pytest.raises(SourceError) as error:
         source_over(client).fetch(max_length=3)
     assert "404" in str(error.value)
+
+
+def test_geekhunter_source_should_record_the_screening_questions_the_job_asks():
+    # Arrange
+    url = "https://www.geekhunter.com/pt/code-group/jobs/screening"
+    client = recorded_client(**{url: fixture("job-screening-questions.html")})
+    client.pages[f"{LISTING}?page=1"] = fixture("listing-page-1.html")
+    source = GeekHunterJobSource(client)
+
+    # Act
+    job = source._job(url, utc_now())  # the detail page alone: the listing is not the point
+
+    # Assert
+    questions = job.raw["screeningQuestions"]
+    assert [question["id"] for question in questions] == [142139]
+    assert questions[0]["answerType"] == "number"
+    assert questions[0]["mandatory"] is True
+
+
+def test_geekhunter_source_should_record_no_screening_question_when_the_job_asks_none():
+    # Arrange
+    source = GeekHunterJobSource(recorded_client())
+
+    # Act
+    jobs = source.fetch(max_length=1)
+
+    # Assert
+    assert jobs[0].raw["screeningQuestions"] == []

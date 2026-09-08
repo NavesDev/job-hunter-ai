@@ -42,7 +42,7 @@ def list_jobs(
     ] = None,
 ) -> None:
     """List normalized jobs from a source and print them as JSON on stdout."""
-    filters = _filters(filter_)
+    filters = _pairs("--filter", filter_)
     config = load_config()
     job_source = build_source_registry().get(source)
     with SqliteJobRepository(config.storage.database_path) as repository:
@@ -52,19 +52,19 @@ def list_jobs(
     emit_success([job_to_payload(job) for job in jobs])
 
 
-def _filters(pairs: list[str] | None) -> dict[str, str]:
-    """Parse every `--filter name=value` into a mapping, refusing anything else.
+def _pairs(flag: str, given: list[str] | None) -> dict[str, str]:
+    """Parse every `<flag> name=value` into a mapping, refusing anything else.
 
-    Only the syntax is checked here: which names and values a platform honors is the
-    source's own rule, and it raises before any request goes out.
+    Only the syntax is checked here: which names and values are meaningful belongs to
+    the source or the applier, and each raises before it touches the platform.
     """
-    filters: dict[str, str] = {}
-    for pair in pairs or []:
+    pairs: dict[str, str] = {}
+    for pair in given or []:
         name, separator, value = pair.partition("=")
         if not separator or not name.strip():
-            raise InvalidInputError(f"--filter takes `name=value`, got `{pair}`")
-        filters[name.strip()] = value.strip()
-    return filters
+            raise InvalidInputError(f"{flag} takes `name=value`, got `{pair}`")
+        pairs[name.strip()] = value.strip()
+    return pairs
 
 
 @apply_job_app.command()
@@ -83,6 +83,13 @@ def apply_job(
         typer.Option(
             "--salary",
             help="Which predefined salary expectation to offer: clt, pj or internship.",
+        ),
+    ] = None,
+    answer: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--answer",
+            help="Screening answer as `question-id=value`; repeat it, one per question.",
         ),
     ] = None,
     all_ready: Annotated[
@@ -104,5 +111,12 @@ def apply_job(
     config = load_config()
     with SqliteJobRepository(config.storage.database_path) as repository:
         use_case = ApplyJobUseCase(repository, build_applier_registry(), config.candidate)
-        result = use_case.execute(job_id or "", method, email=email, subject=subject, salary=salary)
+        result = use_case.execute(
+            job_id or "",
+            method,
+            email=email,
+            subject=subject,
+            salary=salary,
+            answers=_pairs("--answer", answer),
+        )
     emit_success(application_result_to_payload(result))

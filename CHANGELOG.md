@@ -23,6 +23,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ### Added
 
+- `apply-job --answer question-id=value` (repeatable): answers the screening questions a
+  GeekHunter job asks after its form, in the same run and the same browser session, so the
+  form is submitted once. `list-jobs` now records those questions in the job's `raw`, and
+  every answer is checked against its own question — type, range, offered options — before
+  the browser opens; a mandatory question left unanswered raises `INVALID_INPUT` there
+  rather than stranding a half-made candidacy. Nothing is ever answered on the candidate's
+  behalf ([CONTRACT.md](docs/CONTRACT.md#apply-job)).
+
 - `list-jobs --source geekhunter`: collects jobs from GeekHunter's public listing, reading the
   `JobPosting` structured data each job page renders. No login, no browser, no new dependency —
   the source identifies itself by user-agent and paces itself to one request per second

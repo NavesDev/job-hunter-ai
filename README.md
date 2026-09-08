@@ -152,6 +152,14 @@ overrides that:
 apply-job --job-id geekhunter:6dd70e03512a --method form --salary pj
 ```
 
+Jobs with screening questions need one `--answer question-id=value` per question — the
+questions come from `raw.screeningQuestions`, recorded by `list-jobs`, and each answer is
+checked against its own question before the browser opens:
+
+```bash
+apply-job --job-id geekhunter:eb228a61b659 --method form --answer 142139=2
+```
+
 `--salary` never carries an amount: it names one of the values above. Only what the profile
 predefines can ever be sent. A missing field raises `INVALID_INPUT` **before** the browser
 opens, because an application cannot be un-sent. `status="sent"` is only

@@ -107,11 +107,27 @@
         return;
       }
       // The point of this stand-in: the form is taken, and the platform asks its
-      // screening questions instead of confirming the application.
-      outcome.innerHTML = "<h2>Você está quase terminando</h2>" +
-        "<p>Quantos anos de experiência em/com .NET você tem?</p>" +
-        "<input name=\"screening-142139\" type=\"number\" />" +
-        "<p>Você aceita trabalhar presencialmente?</p>";
+      // screening questions before the application counts. Answering them completes it.
+      if (!window.__screening) {
+        window.__screening = true;
+        outcome.innerHTML = "<h2>Você está quase terminando</h2>" +
+          "<p>Quantos anos de experiência em/com .NET você tem?</p>" +
+          "<input name=\"screening-142139\" type=\"number\" />" +
+          "<p>Você aceita trabalhar presencialmente?</p>" +
+          "<input name=\"screening-142140\" type=\"text\" />";
+        return;
+      }
+      var unanswered = ["screening-142139", "screening-142140"].filter(function (field) {
+        var input = document.getElementsByName(field)[0];
+        return !input || !input.value.trim();
+      });
+      if (unanswered.length) {
+        outcome.textContent = "Essa pergunta é obrigatória. Responda para continuar.";
+        return;
+      }
+      outcome.innerHTML = "<h2>Candidatura Completa!</h2>" +
+        "<p>Parabéns! Você concluiu sua candidatura para a vaga Desenvolvedor(a) .NET " +
+        "Júnior/Pleno.</p>";
     });
   </script>
 </body>

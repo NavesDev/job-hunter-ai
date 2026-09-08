@@ -20,18 +20,20 @@ from job_hunter_ai.domain.entities.candidate_profile import CandidateProfile
 from job_hunter_ai.domain.entities.job import Job
 from job_hunter_ai.domain.errors import ApplierError, InvalidInputError
 from job_hunter_ai.domain.time_utils import utc_now
+from job_hunter_ai.infra.appliers import geekhunter_diagnostics as diagnostics
 from job_hunter_ai.infra.appliers import geekhunter_salary as salary
+from job_hunter_ai.infra.appliers import geekhunter_screening as screening
 
 FORM_SELECTOR = "form:has(input[name='name'])"
 SUBMIT_SELECTOR = "button[type='submit']"
 CONFIRMATION_TEXT = "Candidatura Completa"
 SCREENING_TEXT = "Você está quase terminando"
+_SCREENING_FIELD = "screening-"
 RESUME_UPLOADED_TEXT = "carregado com sucesso"
 SALARY_FIELD_PREFIX = "salaryExpectation"
 REQUIRED_EXTRA_FIELDS = ("phone", "linkedin")
 DEFAULT_TIMEOUT_MS = 30_000
 DEFAULT_DIAGNOSTICS_DIR = Path("config/local/diagnostics")
-SNIPPET_LIMIT = 320
 _POLL_MS = 250
 
 
@@ -56,8 +58,20 @@ class GeekHunterFormApplier:
         chosen = salary.require_choice(salaries, options.get("salary"))
         resume = self._checked_resume(profile)
         self._checked_consent()
-        filled = self._drive(url, values, resume, salaries, chosen)
+        questions = screening.asked(job.raw)
+        answers = self._checked_answers(questions, options.get("answers"))
+        filled = self._drive(url, values, resume, salaries, chosen, answers)
         return self._result(job, filled)
+
+    def _checked_answers(self, questions: list[dict[str, Any]], given: Any) -> dict[str, str]:
+        """Every screening answer is settled before the browser opens, or none is.
+
+        A mandatory question found on the screen with the form already submitted leaves
+        the candidacy half-made, so it is a `--answer` missing here, not a failure there.
+        """
+        if not self._submit:
+            return {}  # a dry run never reaches the screening screen
+        return screening.answers_for(questions, given)
 
     # --- validation: everything that can be known before the browser opens ---
 
@@ -112,6 +126,7 @@ class GeekHunterFormApplier:
         resume: Path,
         salaries: dict[str, str],
         chosen: str | None,
+        answers: dict[str, str],
     ) -> dict[str, str]:
         from playwright.sync_api import Error as PlaywrightError
         from playwright.sync_api import sync_playwright
@@ -125,7 +140,7 @@ class GeekHunterFormApplier:
                     page.goto(url, wait_until="domcontentloaded")
                     values["salary"] = self._fill(page, values, resume, salaries, chosen)
                     if self._submit:
-                        self._submit_and_confirm(page, url, values)
+                        self._submit_and_confirm(page, url, values, answers)
                 finally:
                     context.close()
         except PlaywrightError as exc:
@@ -257,7 +272,9 @@ class GeekHunterFormApplier:
         field.first.fill(value)
         return value
 
-    def _submit_and_confirm(self, page: Any, url: str, values: dict[str, str]) -> None:
+    def _submit_and_confirm(
+        self, page: Any, url: str, values: dict[str, str], answers: dict[str, str]
+    ) -> None:
         """Wait for the platform's own word, and tell the two answers it can give apart.
 
         A form GeekHunter accepts does not always end the application: a job with
@@ -267,78 +284,46 @@ class GeekHunterFormApplier:
         """
         page.locator(SUBMIT_SELECTOR).first.click()
         confirmation = page.get_by_text(CONFIRMATION_TEXT).first
-        screening = page.get_by_text(SCREENING_TEXT).first
+        screen = page.get_by_text(SCREENING_TEXT).first
         deadline = time.monotonic() + self._timeout_ms / 1000
         while time.monotonic() < deadline:
-            if _is_showing(confirmation):
+            if diagnostics.is_showing(confirmation):
                 return
-            if _is_showing(screening):
-                raise ApplierError(self._screening(page, url))
+            if diagnostics.is_showing(screen):
+                self._answer_screening(page, url, answers)
+                return self._confirmed(page, url, values)
             page.wait_for_timeout(_POLL_MS)
-        raise ApplierError(self._unconfirmed(page, url, values))
+        raise ApplierError(diagnostics.unconfirmed(page, url, values, self._diagnostics_dir))
 
-    def _screening(self, page: Any, url: str) -> str:
-        """Hand the questions back: only the candidate knows their own answers."""
-        questions = _questions(page)
-        asked = " ".join(f"`{question}`" for question in questions) if questions else ""
-        return " ".join(
-            part
-            for part in (
-                f"geekhunter took the form for {url} and is asking screening questions"
-                " before the application counts;",
-                f"it asks {asked}." if asked else "it does not say which on the page.",
-                "answer them on the job page — nothing here can answer for you,"
-                " and nothing else was sent.",
-                self._saved_page(page, url),
-            )
-            if part
-        )
+    def _confirmed(self, page: Any, url: str, values: dict[str, str]) -> None:
+        """The platform's own word on the second step, waited for exactly like the first."""
+        try:
+            page.get_by_text(CONFIRMATION_TEXT).first.wait_for(timeout=self._timeout_ms)
+        except Exception as exc:
+            raise ApplierError(
+                diagnostics.unconfirmed(page, url, values, self._diagnostics_dir)
+            ) from exc
 
-    def _unconfirmed(self, page: Any, url: str, values: dict[str, str]) -> str:
-        """Say what the platform answered instead, so the next run is not blind.
+    def _answer_screening(self, page: Any, url: str, answers: dict[str, str]) -> None:
+        """Type the answers the caller gave, and refuse to submit a question left blank.
 
-        `Candidatura Completa` missing means one of two very different things — the form
-        was refused, or it went through and said so differently — and the message alone
-        could never tell them apart. What the page became is the evidence, so it is
-        quoted here and kept on disk.
+        Nothing is invented for a field the page shows and `--answer` did not cover: a
+        screening answer is a claim about the candidate, and a wrong one is worse than
+        an application that stops here.
         """
-        return " ".join(
-            part
-            for part in (
-                f"geekhunter never confirmed the application for {url};",
-                "the attempt may or may not have gone through.",
-                self._what_the_page_said(page, values),
-                self._saved_page(page, url),
-            )
-            if part
-        )
-
-    def _what_the_page_said(self, page: Any, values: dict[str, str]) -> str:
-        """The visible text the page ended on, with the candidate's own values taken out."""
-        try:
-            text = " ".join(str(page.locator("body").first.inner_text()).split())
-            where = str(page.url)
-        except Exception:
-            return ""  # a page that cannot even be read must not mask the original failure
-        for value in values.values():
-            if value:
-                text = text.replace(value, "…")
-        if not text:
-            return f"it ended on {where}, with no visible text."
-        return f"it ended on {where}, saying `{_both_ends(text)}`."
-
-    def _saved_page(self, page: Any, url: str) -> str:
-        """Keep the page itself next to the message: a snippet is rarely the whole story."""
-        stamp = utc_now().strftime("%Y%m%dT%H%M%SZ")
-        target = self._diagnostics_dir / f"unconfirmed-{stamp}.html"
-        try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(f"<!-- {url} -->\n{page.content()}", encoding="utf-8")
-        except Exception:
-            return ""  # diagnostics are a courtesy; failing to write one changes nothing
-        return f"the page as it was is in {target}."
-
-    # --- the outcome ---
+        if not answers:
+            raise ApplierError(diagnostics.screening(page, url, self._diagnostics_dir))
+        for identifier, answer in answers.items():
+            field = page.locator(f"[name='{_SCREENING_FIELD}{identifier}']").first
+            if not diagnostics.is_showing(field):
+                raise ApplierError(
+                    f"geekhunter asks a screening question this page does not name as "
+                    f"`{_SCREENING_FIELD}{identifier}`; the questions changed shape and "
+                    f"nothing was answered. "
+                    f"{diagnostics.saved_page(page, url, self._diagnostics_dir)}"
+                )
+            field.fill(answer)
+        page.locator(SUBMIT_SELECTOR).first.click()
 
     def _result(self, job: Job, values: dict[str, str]) -> ApplicationResult:
         if not self._submit:
@@ -358,37 +343,6 @@ class GeekHunterFormApplier:
             detail=f"geekhunter confirmed the application for `{job.title}`",
             applied_at=utc_now(),
         )
-
-
-def _is_showing(locator: Any) -> bool:
-    """Whether the element is on the page right now, without waiting for it to appear."""
-    try:
-        return bool(locator.count()) and bool(locator.is_visible())
-    except Exception:
-        return False  # a page mid-navigation answers nothing; the next poll asks again
-
-
-def _questions(page: Any) -> list[str]:
-    """The screening questions as the page words them, in the order it asks them."""
-    try:
-        text = str(page.locator("body").first.inner_text())
-    except Exception:
-        return []
-    asked = [" ".join(line.split()) for line in text.splitlines() if line.strip().endswith("?")]
-    return list(dict.fromkeys(asked))
-
-
-def _both_ends(text: str) -> str:
-    """Keep the start and the end of the page text: the answer sits at one of them.
-
-    A page that replaced itself says what happened up top; a page that only appended a
-    message under the form it kept says it at the very bottom. Quoting one end alone
-    would lose that answer half the time.
-    """
-    if len(text) <= SNIPPET_LIMIT:
-        return text
-    half = SNIPPET_LIMIT // 2
-    return f"{text[:half]} […] {text[-half:]}"
 
 
 def _digits(value: str) -> str:

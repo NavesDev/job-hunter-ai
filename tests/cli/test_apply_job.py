@@ -208,3 +208,17 @@ def test_apply_job_should_reject_a_salary_that_is_not_a_predefined_kind(runner, 
     # Assert
     assert result.exit_code != 0
     assert parse_stderr_json(result)["code"] == "INVALID_INPUT"
+
+
+def test_apply_job_should_fail_with_invalid_input_when_an_answer_is_not_a_pair(runner, workspace):
+    # Arrange
+    args = ["--job-id", "manual:whatever", "--method", "form", "--answer", "142139"]
+
+    # Act
+    result = runner.invoke(apply_job_app, args)
+
+    # Assert
+    assert result.exit_code != 0
+    error = parse_stderr_json(result)
+    assert error["code"] == "INVALID_INPUT"
+    assert "--answer takes `name=value`" in error["error"]
