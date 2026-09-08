@@ -78,10 +78,18 @@ Applying anonymously works, but GeekHunter then holds the application until the 
 clicks a link it emails them — nothing is delivered while that inbox goes unread. Signed in,
 the platform ties the application to the account and takes it right away.
 
-The command keeps a session in a browser profile of the tool's own
-(`browser_profile_dir`, `config/local/browser-profile` by default), which `apply-job
---method form` reuses. It signs in only when the profile has no session; `--force` clears
-the profile's cookies and signs in again. Credentials come from `.env`:
+The command warms a browser profile of the tool's own (`browser_profile_dir`,
+`config/local/browser-profile` by default). It signs in only when the profile has none;
+`--force` clears its cookies and signs in again.
+
+A profile is not enough on its own: the token GeekHunter hands the job pages
+(`auth_token`) lives only while a browser is open, so a profile signed in yesterday opens
+today anonymous. `apply-job --method form` therefore checks the job page itself — a session
+arrives with the email filled and locked — and signs in on the spot when it does not,
+before filling anything. That is what lets an agent recover from an expired session without
+a human at the keyboard. With no credentials configured it applies anonymously, as before.
+
+Credentials come from `.env`:
 
 ```
 GEEKHUNTER_USERNAME=you@example.com

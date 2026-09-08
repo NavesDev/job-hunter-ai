@@ -1,12 +1,11 @@
-"""Keeps a signed-in GeekHunter session in a browser profile of the tool's own.
+"""Warms a browser profile with a GeekHunter session, for `login-platform`.
 
-Why a session at all: applying anonymously leaves the application waiting for a link
-GeekHunter emails the candidate, so nothing is delivered until a human opens an inbox.
-Signed in, the platform ties the application to the account and delivers it right away.
+Why a session at all: signed in, the job form arrives with the candidate's own data and
+the application is delivered when submitted. Anonymous, GeekHunter holds it until the
+candidate clicks a link it emails them.
 
-The password is typed into the platform's own field and nowhere else. It never reaches a
-message, a log or the history — every error is scrubbed before it leaves this module
-(docs/CODE_STANDARDS.md#error-policy).
+The browser lifecycle lives here; the sign-in steps live in `geekhunter_sign_in`, because
+the applier performs the same sign-in on a page it already has open.
 """
 
 from pathlib import Path
@@ -16,17 +15,11 @@ from job_hunter_ai.domain.entities.platform_credentials import PlatformCredentia
 from job_hunter_ai.domain.entities.session_result import SessionResult, SessionStatus
 from job_hunter_ai.domain.errors import SessionError
 from job_hunter_ai.domain.time_utils import utc_now
+from job_hunter_ai.infra.sessions.geekhunter_sign_in import GeekHunterSignIn
 
 DEFAULT_BASE_URL = "https://www.geekhunter.com"
-SIGN_IN_PATH = "/pt/candidates/sign_in"
-EMAIL_FIELD = "input[name='candidate[email]']"
-PASSWORD_FIELD = "input[name='candidate[password]']"
-REMEMBER_FIELD = "input[type='checkbox'][name='candidate[remember_me]']"
-SUBMIT_FIELD = "input[name='commit']"
-CONSENT_BUTTON = "ENTENDI E ACEITO"
 DEFAULT_PROFILE_DIR = Path("config/local/browser-profile")
 DEFAULT_TIMEOUT_MS = 30_000
-_SETTLE_MS = 500
 
 
 class GeekHunterSession:
@@ -38,11 +31,11 @@ class GeekHunterSession:
         self, credentials: PlatformCredentials, settings: dict[str, Any] | None = None
     ) -> None:
         settings = settings or {}
-        self._credentials = credentials
         self._base_url = str(settings.get("base_url") or DEFAULT_BASE_URL).rstrip("/")
         self._profile_dir = Path(settings.get("browser_profile_dir") or DEFAULT_PROFILE_DIR)
         self._headless = bool(settings.get("headless", True))
         self._timeout_ms = int(settings.get("timeout_ms", DEFAULT_TIMEOUT_MS))
+        self._sign_in = GeekHunterSignIn(credentials, self._base_url, self._timeout_ms)
 
     def ensure_session(self, force: bool = False) -> SessionResult:
         """Return a usable session, signing in only when the profile has none."""
@@ -57,81 +50,28 @@ class GeekHunterSession:
                 )
                 try:
                     if force:
-                        # Forcing means signing in again, and the form is only served to a
-                        # browser the platform does not recognize yet.
+                        # The form is only served to a browser the platform does not
+                        # recognize yet, so forcing means forgetting first.
                         context.clear_cookies()
                     page = context.new_page()
                     page.set_default_timeout(self._timeout_ms)
-                    return self._signed_in(page, force)
+                    return self._session(page, force)
                 finally:
                     context.close()
         except SessionError:
             raise
         except PlaywrightError as exc:
-            raise SessionError(self._scrubbed(f"could not sign in to geekhunter: {exc}")) from None
+            raise SessionError(f"could not sign in to geekhunter: {_first_line(exc)}") from None
 
-    def _signed_in(self, page: Any, force: bool) -> SessionResult:
-        self._open_sign_in(page)
-        if not self._asking_for_credentials(page):
-            if force:
-                raise SessionError(
-                    "geekhunter still recognizes this profile after clearing its cookies; "
-                    "sign out by hand in the profile, or delete it and run login-platform again"
-                )
+    def _session(self, page: Any, force: bool) -> SessionResult:
+        if not force and self._sign_in.has_session(page):
             return self._result(SessionStatus.ALREADY_AUTHENTICATED, "the profile is signed in")
-        self._fill_and_submit(page)
-        self._open_sign_in(page)  # the form served again is the platform saying `still no`
-        if self._asking_for_credentials(page):
-            raise SessionError(
-                self._scrubbed(
-                    "geekhunter refused the sign-in and still asks for credentials"
-                    f"{self._page_said(page)}; check "
-                    f"{self._credentials.platform.upper()}_USERNAME and _PASSWORD in .env"
-                )
-            )
-        return self._result(SessionStatus.AUTHENTICATED, "signed in with the credentials in .env")
-
-    def _open_sign_in(self, page: Any) -> None:
-        """Load the sign-in page and clear what covers it.
-
-        The consent banner overlays the form, and an invisible field is not a session:
-        reading `no password field` as `already signed in` is how a failed login came back
-        reported as a success.
-        """
-        page.goto(f"{self._base_url}{SIGN_IN_PATH}", wait_until="domcontentloaded")
-        page.wait_for_load_state("networkidle")
-        consent = page.get_by_text(CONSENT_BUTTON, exact=False)
-        if consent.count() and consent.first.is_visible():
-            consent.first.click()
-            page.wait_for_timeout(_SETTLE_MS)
-
-    def _page_said(self, page: Any) -> str:
-        """Whatever the platform put on the page, so a refusal says why."""
-        try:
-            text = " ".join(str(page.locator("body").first.inner_text()).split())
-        except Exception:
-            return ""
-        for message in ("inválid", "incorret", "bloquead", "confirm"):
-            found = next((line for line in text.split(". ") if message in line.lower()), "")
-            if found:
-                return f" ({found[:120]})"
-        return ""
-
-    def _asking_for_credentials(self, page: Any) -> bool:
-        """The sign-in form on screen is the platform's own way of saying `no session`."""
-        field = page.locator(PASSWORD_FIELD)
-        return bool(field.count()) and bool(field.first.is_visible())
-
-    def _fill_and_submit(self, page: Any) -> None:
-        page.locator(EMAIL_FIELD).first.fill(self._credentials.username)
-        page.locator(PASSWORD_FIELD).first.fill(self._credentials.password)
-        remember = page.locator(REMEMBER_FIELD)
-        # Without it the session dies with the browser, and the next run would sign in again.
-        if remember.count() and not remember.first.is_checked():
-            remember.first.dispatch_event("click")
-        page.locator(SUBMIT_FIELD).first.click()
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(_SETTLE_MS)
+        self._sign_in.sign_in(page)
+        return self._result(
+            SessionStatus.AUTHENTICATED,
+            "signed in with the credentials in .env; the platform's own token for the job "
+            "pages lasts only while a browser is open, so apply-job signs in again as needed",
+        )
 
     def _result(self, status: SessionStatus, detail: str) -> SessionResult:
         return SessionResult(
@@ -142,5 +82,6 @@ class GeekHunterSession:
             checked_at=utc_now(),
         )
 
-    def _scrubbed(self, text: str) -> str:
-        return self._credentials.scrub(text).splitlines()[0]
+
+def _first_line(exc: Exception) -> str:
+    return str(exc).splitlines()[0] if str(exc) else type(exc).__name__

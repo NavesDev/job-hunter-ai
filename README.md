@@ -116,8 +116,10 @@ login-platform --source geekhunter
 ```
 
 Applying anonymously leaves the application waiting for a link GeekHunter emails you. Signed
-in, it is delivered right away and tied to your account. The session lives in the tool's own
-browser profile (`browser_profile_dir`) and is reused by `apply-job --method form`; the
+in, the form arrives filled with your own data and the application is delivered right away.
+The session lives in the tool's own browser profile (`browser_profile_dir`); because the
+platform's token for the job pages lasts only while a browser is open, `apply-job --method
+form` signs in again by itself whenever a job page treats it as a stranger. The
 credentials come from `.env` (`GEEKHUNTER_USERNAME`, `GEEKHUNTER_PASSWORD`) and never reach
 a flag, the output, an error or the history. `--force` signs in again when a session went
 stale.

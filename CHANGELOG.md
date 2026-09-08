@@ -42,6 +42,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
   when one went stale, which is how an agent recovers without a human at the keyboard.
   Credentials come from `.env` as `<SOURCE>_USERNAME` / `<SOURCE>_PASSWORD` and never reach
   a flag, the output, an error or the history ([CONTRACT.md](docs/CONTRACT.md#login-platform)).
+- `apply-job --method form` signs itself in when a GeekHunter job page treats the browser as
+  a stranger, then applies as the candidate: the platform's token for those pages lives only
+  while a browser is open, so a warmed profile alone is not enough. Every result now says
+  which run it was — `as the signed-in candidate` or `as an anonymous visitor` — read from
+  the page, not from the settings.
 - `SESSION_ERROR`, a new contract error code: the platform gave no session.
 - `SessionStrategy` port plus `infra/sessions/` and its registry: a new platform's sign-in
   is a new class and a registry entry, like its source and its applier.

@@ -37,17 +37,27 @@ SIGN_IN_FORM = """<html><body>
   </form>
   <p>{message}</p>
 </body></html>"""
-SIGNED_IN = "<html><body><h1>Minhas candidaturas</h1><p>Você está conectado.</p></body></html>"
+SIGNED_IN = "<html><body><h1>Dashboard</h1><p>Olá! Que bom ver você de novo.</p></body></html>"
+CHOOSER = "<html><body><h1>Bem-vindo!</h1><p>Você é empresa ou candidato?</p></body></html>"
+DASHBOARD_PATH = "/v1/pt/candidates/dashboard"
 
 
 class _Handler(BaseHTTPRequestHandler):
     """The sign-in page as Devise serves it: a form, a cookie, and nothing else."""
 
     def do_GET(self) -> None:
-        if "session=1" in (self.headers.get("Cookie") or ""):
-            self._send(SIGNED_IN)
+        signed_in = "session=1" in (self.headers.get("Cookie") or "")
+        if self.path.startswith(DASHBOARD_PATH):
+            # The candidate area bounces a visitor with no session, like the real one.
+            self._send(
+                SIGNED_IN if signed_in else CHOOSER, location=None if signed_in else "/pt/entrar"
+            )
             return
-        self._send(SIGN_IN_FORM.format(message=""))
+        # Devise sends a signed-in visitor away from its own sign-in page.
+        self._send(
+            CHOOSER if signed_in else SIGN_IN_FORM.format(message=""),
+            location=DASHBOARD_PATH if signed_in else None,
+        )
 
     def do_POST(self) -> None:
         length = int(self.headers.get("Content-Length") or 0)
@@ -59,11 +69,13 @@ class _Handler(BaseHTTPRequestHandler):
             return
         # Persistent, like the platform's "remember me": a session cookie would die
         # with the browser and the profile would be signed out on the next run.
-        self._send(SIGNED_IN, cookie="session=1; Path=/; Max-Age=3600")
+        self._send(SIGNED_IN, cookie="session=1; Path=/; Max-Age=3600", location=DASHBOARD_PATH)
 
-    def _send(self, body: str, cookie: str | None = None) -> None:
+    def _send(self, body: str, cookie: str | None = None, location: str | None = None) -> None:
         payload = body.encode("utf-8")
-        self.send_response(200)
+        self.send_response(302 if location else 200)
+        if location:
+            self.send_header("Location", location)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
         if cookie:

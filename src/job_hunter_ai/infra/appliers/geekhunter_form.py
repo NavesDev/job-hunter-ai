@@ -23,6 +23,7 @@ from job_hunter_ai.domain.time_utils import utc_now
 from job_hunter_ai.infra.appliers import geekhunter_diagnostics as diagnostics
 from job_hunter_ai.infra.appliers import geekhunter_salary as salary
 from job_hunter_ai.infra.appliers import geekhunter_screening as screening
+from job_hunter_ai.infra.sessions.geekhunter_sign_in import GeekHunterSignIn
 
 FORM_SELECTOR = "form:has(input[name='name'])"
 SUBMIT_SELECTOR = "button[type='submit']"
@@ -47,8 +48,15 @@ class GeekHunterFormApplier:
 
     name = "geekhunter-form"
 
-    def __init__(self, settings: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        settings: dict[str, Any] | None = None,
+        sign_in: GeekHunterSignIn | None = None,
+    ) -> None:
         settings = settings or {}
+        # Optional on purpose: with no credentials configured the applier still applies,
+        # anonymously, exactly as it did before there was a sign-in at all.
+        self._sign_in = sign_in
         self._accept_terms = bool(settings.get("accept_terms", False))
         self._submit = bool(settings.get("submit", True)) and not settings.get("dry_run", False)
         self._headless = bool(settings.get("headless", True))
@@ -162,6 +170,7 @@ class GeekHunterFormApplier:
                 page.set_default_timeout(self._timeout_ms)
                 try:
                     page.goto(url, wait_until="domcontentloaded")
+                    self._signed_in = self._sign_in_if_anonymous(page, url)
                     values["salary"] = self._fill(page, values, resume, salaries, chosen)
                     if self._submit:
                         self._submit_and_confirm(page, url, values, answers)
@@ -170,6 +179,22 @@ class GeekHunterFormApplier:
         except PlaywrightError as exc:
             raise ApplierError(f"could not apply through {url}: {_first_line(exc)}") from exc
         return values
+
+    def _sign_in_if_anonymous(self, page: Any, url: str) -> bool:
+        """Sign in when the job page treats this browser as a stranger.
+
+        GeekHunter hands the job pages a token that lives only as long as the browser, so
+        a profile that was signed in yesterday opens today's browser anonymous. Rather
+        than applying as a visitor — which leaves the application waiting for an emailed
+        link — the applier signs in and loads the page again.
+        """
+        page.wait_for_load_state("networkidle")
+        if _signed_in_on(page) or self._sign_in is None:
+            return _signed_in_on(page)
+        self._sign_in.sign_in(page)
+        page.goto(url, wait_until="domcontentloaded")
+        page.wait_for_load_state("networkidle")
+        return _signed_in_on(page)
 
     def _context(self, playwright: Any) -> Any:
         """A persistent profile carries the session the user already logged in with."""
@@ -272,10 +297,7 @@ class GeekHunterFormApplier:
         field is filled from the same value.
         """
         field = form.locator("input[name='email']")
-        # A session fills this field and locks it: that is the platform saying who it
-        # thinks is applying, and the only honest signal of which of the two runs this is.
-        self._signed_in = bool(field.count()) and field.first.is_disabled()
-        if field.count() == 0 or self._signed_in:
+        if field.count() == 0 or field.first.is_disabled():
             return
         if field.first.input_value().strip():
             return
@@ -417,6 +439,12 @@ class GeekHunterFormApplier:
             detail=f"geekhunter confirmed the application for `{job.title}`, as {self._who()}",
             applied_at=utc_now(),
         )
+
+
+def _signed_in_on(page: Any) -> bool:
+    """A session fills the email field and locks it: the platform saying who is applying."""
+    field = page.locator("input[name='email']")
+    return bool(field.count()) and bool(field.first.is_disabled())
 
 
 def _contract_of(field_name: str) -> str:
