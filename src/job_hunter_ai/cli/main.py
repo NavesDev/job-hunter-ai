@@ -1,4 +1,4 @@
-"""CLI entrypoints: `list-jobs` and `apply-job`.
+"""CLI entrypoints: `list-jobs`, `apply-job`, `login-platform` and `score-job`.
 
 The commands only parse flags, assemble the concrete dependency graph and format
 the output — every rule lives in `application/`, `domain/` and `infra/`.
@@ -12,19 +12,24 @@ import typer
 from job_hunter_ai.application.apply_job import ApplyJobUseCase
 from job_hunter_ai.application.list_jobs import DEFAULT_MAX_LENGTH, ListJobsUseCase
 from job_hunter_ai.application.login import LoginUseCase
+from job_hunter_ai.application.score_job import ScoreJobUseCase
 from job_hunter_ai.cli.dependencies import (
     build_applier_registry,
+    build_extractor_registry,
+    build_resume_reader,
     build_session_registry,
     build_source_registry,
 )
 from job_hunter_ai.cli.output import contract_command, emit_success
 from job_hunter_ai.cli.serializers import (
     application_result_to_payload,
+    ats_score_to_payload,
     job_to_payload,
     session_result_to_payload,
 )
 from job_hunter_ai.config.loader import load_config
 from job_hunter_ai.domain.errors import ApplierNotFoundError, InvalidInputError
+from job_hunter_ai.domain.matching.ats_scorer import AtsScorer
 from job_hunter_ai.infra.appliers.geekhunter_salary import KINDS as SALARY_KINDS
 from job_hunter_ai.infra.repository.sqlite_job_repository import SqliteJobRepository
 
@@ -34,6 +39,9 @@ list_jobs_app = typer.Typer(add_completion=False, help="List jobs from a registe
 apply_job_app = typer.Typer(add_completion=False, help="Apply to an already listed job.")
 login_app = typer.Typer(
     add_completion=False, help="Sign the tool's browser profile into a platform."
+)
+score_job_app = typer.Typer(
+    add_completion=False, help="Score the resume against a collected job, as an ATS would."
 )
 
 
@@ -154,3 +162,22 @@ def login(
     strategy = build_session_registry().get(source)
     result = LoginUseCase(strategy).execute(force=force)
     emit_success(session_result_to_payload(result))
+
+
+@score_job_app.command()
+@contract_command
+def score_job(
+    job_id: Annotated[str, typer.Option("--job-id", help="Job id returned by list-jobs.")],
+    resume: Annotated[
+        Path | None,
+        typer.Option("--resume", help="Resume PDF to score. Defaults to the configured one."),
+    ] = None,
+) -> None:
+    """Print, as JSON on stdout, how an ATS would score the resume for this job."""
+    config = load_config()
+    with SqliteJobRepository(config.storage.database_path) as repository:
+        use_case = ScoreJobUseCase(
+            repository, build_extractor_registry(), build_resume_reader(), AtsScorer()
+        )
+        score = use_case.execute(job_id, resume or config.candidate.resume_path)
+    emit_success(ats_score_to_payload(score))
