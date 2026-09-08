@@ -579,3 +579,26 @@ def test_form_applier_should_not_call_an_unconfirmed_application_sent(site, prof
 
     # Assert
     assert result.status is not ApplicationStatus.SENT
+
+
+def test_form_applier_should_say_it_applied_as_the_signed_in_candidate(site, profile):
+    # Arrange
+    subject = applier(submit=False)
+    job = job_page(site, "job-with-form-logged-in.html")
+
+    # Act
+    result = subject.apply(job, profile)
+
+    # Assert
+    assert "as the signed-in candidate" in result.detail
+
+
+def test_form_applier_should_say_it_applied_as_an_anonymous_visitor(site, profile):
+    # Arrange
+    subject = applier(submit=False)
+
+    # Act
+    result = subject.apply(job_at(site), profile)
+
+    # Assert
+    assert "as an anonymous visitor" in result.detail

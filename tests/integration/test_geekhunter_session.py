@@ -21,8 +21,15 @@ pytest.importorskip("playwright", reason="signing in needs the `form` extra")
 
 USERNAME = "ada@example.com"
 PASSWORD = "not-a-real-password"
+# The real page ships a consent banner that covers the form: an invisible field is not a
+# session, and the strategy has to clear the banner before it can read the page at all.
 SIGN_IN_FORM = """<html><body>
-  <form id="new_candidate" method="post" action="/pt/candidates/sign_in">
+  <div id="consent" style="position:fixed;inset:0;background:#fff;z-index:9">
+    <button type="submit" onclick="document.getElementById('consent').remove();
+      document.getElementById('new_candidate').style.visibility='visible'">ENTENDI E ACEITO</button>
+  </div>
+  <form id="new_candidate" method="post" action="/pt/candidates/sign_in"
+        style="visibility:hidden">
     <input type="email" name="candidate[email]" placeholder="Digite o seu email">
     <input type="password" name="candidate[password]" placeholder="Digite sua senha">
     <input type="checkbox" name="candidate[remember_me]">
@@ -160,3 +167,13 @@ def test_session_should_create_the_profile_directory_when_it_does_not_exist(site
 
     # Assert
     assert profile.is_dir()
+
+
+def test_session_should_not_call_a_covered_form_a_session(site, tmp_path):
+    """The consent banner hides the form; that is not the same as being signed in."""
+    # Arrange
+    subject = session_over(site, tmp_path / "profile", password="wrong-password")
+
+    # Act / Assert
+    with pytest.raises(SessionError):
+        subject.ensure_session()  # a false `already_authenticated` would return instead

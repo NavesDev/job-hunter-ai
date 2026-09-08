@@ -56,6 +56,7 @@ class GeekHunterFormApplier:
         self._profile_dir = settings.get("browser_profile_dir")
         self._diagnostics_dir = Path(settings.get("diagnostics_dir") or DEFAULT_DIAGNOSTICS_DIR)
         self._awaiting_email = False
+        self._signed_in = False
 
     def apply(self, job: Job, profile: CandidateProfile, **options: Any) -> ApplicationResult:
         url = self._checked_url(job)
@@ -68,6 +69,10 @@ class GeekHunterFormApplier:
         answers = self._checked_answers(questions, options.get("answers"))
         filled = self._drive(url, values, resume, salaries, chosen, answers)
         return self._result(job, filled)
+
+    def _who(self) -> str:
+        """Which of the two runs this was — the platform decides, not the settings."""
+        return "the signed-in candidate" if self._signed_in else "an anonymous visitor"
 
     def _awaiting_confirmation(self, job: Job) -> ApplicationResult:
         return ApplicationResult(
@@ -267,7 +272,10 @@ class GeekHunterFormApplier:
         field is filled from the same value.
         """
         field = form.locator("input[name='email']")
-        if field.count() == 0 or field.first.is_disabled():
+        # A session fills this field and locks it: that is the platform saying who it
+        # thinks is applying, and the only honest signal of which of the two runs this is.
+        self._signed_in = bool(field.count()) and field.first.is_disabled()
+        if field.count() == 0 or self._signed_in:
             return
         if field.first.input_value().strip():
             return
@@ -396,7 +404,9 @@ class GeekHunterFormApplier:
                 method="form",
                 status=ApplicationStatus.SKIPPED,
                 applier=self.name,
-                detail=f"dry run: form filled, nothing submitted ({_summary(values)})",
+                detail=(
+                    f"dry run as {self._who()}: form filled, nothing submitted ({_summary(values)})"
+                ),
                 applied_at=utc_now(),
             )
         return ApplicationResult(
@@ -404,7 +414,7 @@ class GeekHunterFormApplier:
             method="form",
             status=ApplicationStatus.SENT,
             applier=self.name,
-            detail=f"geekhunter confirmed the application for `{job.title}`",
+            detail=f"geekhunter confirmed the application for `{job.title}`, as {self._who()}",
             applied_at=utc_now(),
         )
 
