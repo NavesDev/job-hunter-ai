@@ -29,6 +29,9 @@ SUBMIT_SELECTOR = "button[type='submit']"
 # The platform confirms in its own words, and which words depend on the path taken:
 # a form that ends there says one thing, a form that went through screening another.
 CONFIRMATION_TEXTS = ("Candidatura Completa", "Obrigado pela sua candidatura")
+# An anonymous application is taken but not delivered until the candidate clicks the link
+# GeekHunter emails them. Saying "sent" there would claim something the platform denies.
+AWAITING_EMAIL_TEXT = "confirmar sua candidatura pelo e-mail"
 SCREENING_TEXT = "Você está quase terminando"
 SCREENING_DIALOG = "[role='dialog']"
 RESUME_UPLOADED_TEXT = "carregado com sucesso"
@@ -52,6 +55,7 @@ class GeekHunterFormApplier:
         self._timeout_ms = int(settings.get("timeout_ms", DEFAULT_TIMEOUT_MS))
         self._profile_dir = settings.get("browser_profile_dir")
         self._diagnostics_dir = Path(settings.get("diagnostics_dir") or DEFAULT_DIAGNOSTICS_DIR)
+        self._awaiting_email = False
 
     def apply(self, job: Job, profile: CandidateProfile, **options: Any) -> ApplicationResult:
         url = self._checked_url(job)
@@ -64,6 +68,19 @@ class GeekHunterFormApplier:
         answers = self._checked_answers(questions, options.get("answers"))
         filled = self._drive(url, values, resume, salaries, chosen, answers)
         return self._result(job, filled)
+
+    def _awaiting_confirmation(self, job: Job) -> ApplicationResult:
+        return ApplicationResult(
+            job_id=job.id,
+            method="form",
+            status=ApplicationStatus.PENDING,
+            applier=self.name,
+            detail=(
+                f"geekhunter took the application for `{job.title}` and is waiting for the "
+                "confirmation link it emailed; it is not delivered until that link is clicked"
+            ),
+            applied_at=utc_now(),
+        )
 
     def _checked_answers(self, questions: list[dict[str, Any]], given: Any) -> dict[str, str]:
         """Every screening answer is settled before the browser opens, or none is.
@@ -301,6 +318,9 @@ class GeekHunterFormApplier:
         while time.monotonic() < deadline:
             if self._is_confirmed(page):
                 return
+            if diagnostics.is_showing(page.get_by_text(AWAITING_EMAIL_TEXT).first):
+                self._awaiting_email = True
+                return
             if diagnostics.is_showing(screen):
                 self._answer_screening(page, url, answers)
                 return self._confirmed(page, url, values)
@@ -312,6 +332,9 @@ class GeekHunterFormApplier:
         deadline = time.monotonic() + self._timeout_ms / 1000
         while time.monotonic() < deadline:
             if self._is_confirmed(page):
+                return
+            if diagnostics.is_showing(page.get_by_text(AWAITING_EMAIL_TEXT).first):
+                self._awaiting_email = True
                 return
             page.wait_for_timeout(_POLL_MS)
         raise ApplierError(diagnostics.unconfirmed(page, url, values, self._diagnostics_dir))
@@ -365,6 +388,8 @@ class GeekHunterFormApplier:
             )
 
     def _result(self, job: Job, values: dict[str, str]) -> ApplicationResult:
+        if self._submit and self._awaiting_email:
+            return self._awaiting_confirmation(job)
         if not self._submit:
             return ApplicationResult(
                 job_id=job.id,

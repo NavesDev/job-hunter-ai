@@ -108,6 +108,11 @@ opens, raising `INVALID_INPUT` when it does not fit. Applying without them submi
 the run reports `APPLIER_ERROR` naming the questions. Nothing is ever answered on the
 candidate's behalf.
 
+`status="pending"` means the platform took the application but has not delivered it: on
+GeekHunter an anonymous application waits for the candidate to click a link emailed to
+them. It is a successful run — JSON on stdout, exit code `0` — and never `sent`, because
+the platform itself says it is not.
+
 `APPLIER_ERROR` means an applier could not complete the attempt on the platform: the
 page no longer has the form it drives, the session expired, the platform asked screening
 questions only the candidate can answer, or it never confirmed the application. The attempt is recorded as `status="failed"` before the

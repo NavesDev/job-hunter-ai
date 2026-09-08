@@ -552,3 +552,30 @@ def test_form_applier_should_refuse_the_screening_consent_when_the_terms_were_no
     # Act / Assert
     with pytest.raises(InvalidInputError):
         subject.apply(screening_job_at(site), profile, answers=ANSWERS)
+
+
+def test_form_applier_should_report_pending_when_the_platform_waits_for_an_email_confirmation(
+    site, profile
+):
+    # Arrange
+    subject = applier(timeout_ms=5000)
+    job = job_page(site, "job-with-form-awaiting-email.html")
+
+    # Act
+    result = subject.apply(job, profile)
+
+    # Assert
+    assert result.status is ApplicationStatus.PENDING
+    assert "confirmation link" in result.detail
+
+
+def test_form_applier_should_not_call_an_unconfirmed_application_sent(site, profile):
+    # Arrange
+    subject = applier(timeout_ms=5000)
+    job = job_page(site, "job-with-form-awaiting-email.html")
+
+    # Act
+    result = subject.apply(job, profile)
+
+    # Assert
+    assert result.status is not ApplicationStatus.SENT

@@ -19,7 +19,7 @@ def test_application_result_should_expose_status_as_contract_string_when_seriali
 
 def test_application_status_should_have_only_contract_values_when_enumerated():
     # Arrange
-    expected = {"sent", "failed", "skipped"}
+    expected = {"sent", "pending", "failed", "skipped"}
 
     # Act
     actual = {str(status) for status in ApplicationStatus}

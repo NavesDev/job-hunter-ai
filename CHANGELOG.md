@@ -35,6 +35,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ### Added
 
+- `status="pending"`, a fourth application status: the platform took the application but has
+  not delivered it. An anonymous GeekHunter application waits for a link emailed to the
+  candidate, and reporting that as `sent` would claim what the platform itself denies
+  ([CONTRACT.md](docs/CONTRACT.md#apply-job)).
+
 - `apply-job --answer question-id=value` (repeatable): answers the screening questions a
   GeekHunter job asks after its form, in the same run and the same browser session, so the
   form is submitted once. `list-jobs` now records those questions in the job's `raw`, and
