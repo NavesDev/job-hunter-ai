@@ -263,14 +263,25 @@ class GeekHunterFormApplier:
             confirmation.first.fill(contact_email)
 
     def _fill_salary(self, form: Any, salaries: dict[str, str], chosen: str | None) -> str:
-        """The field name carries the contract type (`salaryExpectation.CLT`, `.PJ`, ...)."""
-        field = form.locator(f"input[name^='{SALARY_FIELD_PREFIX}']")
-        if field.count() == 0:
+        """Every expected-salary field the form shows, each in its own contract type.
+
+        A job open to more than one contract asks for one expectation per type
+        (`salaryExpectation.CLT` *and* `.PJ`), and each of them is required: filling only
+        the first left the form refusing a submission with no clue which field it meant.
+        """
+        fields = form.locator(f"input[name^='{SALARY_FIELD_PREFIX}']")
+        if fields.count() == 0:
             raise ApplierError("the application form has no expected-salary field")
-        field_name = str(field.first.get_attribute("name") or SALARY_FIELD_PREFIX)
-        value = salary.for_field(salaries, field_name, chosen)
-        field.first.fill(value)
-        return value
+        filled = {}
+        for index in range(fields.count()):
+            field = fields.nth(index)
+            field_name = str(field.get_attribute("name") or SALARY_FIELD_PREFIX)
+            value = salary.for_field(salaries, field_name, chosen)
+            field.fill(value)
+            filled[_contract_of(field_name)] = value
+        if len(filled) == 1:
+            return next(iter(filled.values()))  # one contract type: the amount says it all
+        return ", ".join(f"{contract}={value}" for contract, value in filled.items())
 
     def _submit_and_confirm(
         self, page: Any, url: str, values: dict[str, str], answers: dict[str, str]
@@ -343,6 +354,11 @@ class GeekHunterFormApplier:
             detail=f"geekhunter confirmed the application for `{job.title}`",
             applied_at=utc_now(),
         )
+
+
+def _contract_of(field_name: str) -> str:
+    _, _, suffix = field_name.partition(".")
+    return suffix.strip() or field_name
 
 
 def _digits(value: str) -> str:

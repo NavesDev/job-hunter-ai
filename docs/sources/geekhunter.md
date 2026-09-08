@@ -140,7 +140,9 @@ candidate:
 ```
 
 GeekHunter asks for the expectation in the posting's own contract type and says which in
-the field's name, so the right number is picked for you. `--salary clt|pj|internship`
+the field's name, so the right number is picked for you. A job open to more than one
+contract asks once per type, and every field is required — each is filled from the amount
+its own type declares, so a profile missing one of them raises before the browser opens. `--salary clt|pj|internship`
 overrides that choice; it names one of the values above and never carries an amount, so only
 a figure the profile already declares can reach a form. A missing field raises
 `INVALID_INPUT` before the browser opens — an application cannot be un-sent.

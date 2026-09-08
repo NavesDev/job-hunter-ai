@@ -6,6 +6,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ### Fixed
 
+- `apply-job --method form` fills every expected-salary field the form shows, not only the
+  first. A job open to more than one contract type asks for one expectation per type
+  (`salaryExpectation.CLT` **and** `.PJ`), each required, and the form was being refused
+  with no clue which field it meant.
+
 - `apply-job --method form` recognizes GeekHunter's screening questions. A job can answer an
   accepted form with questions of its own instead of the confirmation, leaving the candidacy
   unfinished; the applier now reports `APPLIER_ERROR` naming every question asked, instead of

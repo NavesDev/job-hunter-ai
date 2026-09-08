@@ -493,3 +493,51 @@ def test_form_applier_should_not_ask_for_answers_on_a_dry_run(site, profile):
 
     # Assert
     assert result.status is ApplicationStatus.SKIPPED
+
+
+def test_form_applier_should_fill_every_expected_salary_the_form_asks_for(site, resume):
+    # Arrange
+    subject = applier()
+    job = job_page(site, "job-with-form-two-contracts.html")
+
+    # Act
+    result = subject.apply(job, multi_salary_profile(resume))
+
+    # Assert
+    assert result.status is ApplicationStatus.SENT
+
+
+def test_form_applier_should_report_each_contract_it_answered_with(site, resume):
+    # Arrange
+    subject = applier(submit=False)
+    job = job_page(site, "job-with-form-two-contracts.html")
+
+    # Act
+    result = subject.apply(job, multi_salary_profile(resume))
+
+    # Assert
+    assert "salary=CLT=4000, PJ=4500" in result.detail
+
+
+def test_form_applier_should_raise_invalid_input_when_a_contract_asked_for_has_no_amount(
+    site, resume
+):
+    # Arrange
+    clt_only = CandidateProfile(
+        name="Ada Lovelace",
+        contact_email="ada@example.com",
+        resume_path=resume,
+        email_body_path=resume,
+        extra_fields={
+            "phone": "+55 61 99999-0000",
+            "linkedin": "https://www.linkedin.com/in/ada",
+            "salary_expectation_clt": "4000",
+        },
+    )
+    subject = applier(submit=False)
+    job = job_page(site, "job-with-form-two-contracts.html")
+
+    # Act / Assert
+    with pytest.raises(InvalidInputError) as error:
+        subject.apply(job, clt_only)
+    assert "PJ" in str(error.value)
