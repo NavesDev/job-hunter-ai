@@ -4,6 +4,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ## [Unreleased]
 
+### Added
+
+- `score-job --job-id <id>` simulates the screening a company's ATS runs, comparing the
+  résumé PDF against the job's requirements and printing the score with its whole
+  rationale: per-component scores, matched and missing skills, months of experience and
+  the knockouts ([CONTRACT.md](docs/CONTRACT.md#score-job)). It reads the very file the
+  company receives, so a PDF the parser cannot read scores badly here too — an unreadable
+  one raises the new `RESUME_ERROR` ([CONTRACT.md](docs/CONTRACT.md#errors-any-command)).
+  The model, its weights and the sources behind them are in
+  [scoring.md](docs/scoring.md); it is deterministic and AI-free, and it decides nothing.
+  `--resume` scores another file without touching the configuration.
+
 ### Fixed
 
 - `apply-job --method form` recognizes both confirmations GeekHunter gives. An application

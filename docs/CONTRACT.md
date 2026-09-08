@@ -95,7 +95,11 @@ A single JSON object on stderr:
 {"error": "smtp connection refused", "code": "SMTP_ERROR"}
 ```
 
-Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`, `SOURCE_ERROR`, `APPLIER_ERROR`, `ALREADY_APPLIED`, `SESSION_ERROR`. A new code must be documented here before being used.
+Codes used in phase 1: `SOURCE_NOT_FOUND`, `APPLIER_NOT_FOUND`, `JOB_NOT_FOUND`, `SMTP_ERROR`, `INVALID_INPUT`, `SOURCE_ERROR`, `APPLIER_ERROR`, `ALREADY_APPLIED`, `SESSION_ERROR`, `RESUME_ERROR`. A new code must be documented here before being used.
+
+`RESUME_ERROR` means the résumé file exists but yields no readable text — a scanned or
+image-only PDF, or a file that is not a PDF at all. A résumé path that does not exist is
+`INVALID_INPUT` instead: nothing was read, so nothing could be judged.
 
 `SOURCE_ERROR` means a source could not deliver its jobs: the platform refused the
 request, or the page no longer has the shape the source parses. It is never a silent
@@ -156,6 +160,59 @@ profile at `browser_profile_dir`, which `apply-job --method form` then reuses.
 
 `status` is `authenticated` (it signed in) or `already_authenticated` (the profile already
 had a session, and nothing was typed).
+
+## `score-job`
+
+Simulates the screening a company's ATS runs: it compares the résumé PDF against the
+requirements of a job already in the local database. Read-only — it reaches no platform,
+records nothing and never decides anything. The model behind the numbers, and the sources
+it is based on, are in [scoring.md](scoring.md).
+
+**Input** (flags):
+
+| Flag | Type | Required | Description |
+|---|---|---|---|
+| `--job-id` | string | yes | Job id returned by `list-jobs` |
+| `--resume` | path | no | Résumé PDF to score; defaults to `application.resume_path` |
+
+**Output** (stdout), an `AtsScore`:
+
+```json
+{
+  "job_id": "geekhunter:a1791ce2080c",
+  "source": "geekhunter",
+  "title": "Analista QA Automatizador",
+  "company": "NTT DATA",
+  "score": 30.7,
+  "verdict": "knockout",
+  "components": {
+    "required_skills": 0.0,
+    "preferred_skills": 100.0,
+    "title_alignment": 0.0,
+    "experience": 33.3,
+    "parseability": 100.0,
+    "sections": 80.0
+  },
+  "required_skills": {"matched": [], "missing": ["rastreabilidade", "Casos de Teste Automatizados"]},
+  "preferred_skills": {"matched": [], "missing": []},
+  "experience": {"required_months": 48, "detected_months": 16, "meets": false},
+  "knockouts": [
+    {"rule": "min_experience", "passed": false, "detail": "48 months required, 16 detected"}
+  ],
+  "resume_path": "config/local/resume.pdf",
+  "scored_at": "2026-09-08T23:47:23Z"
+}
+```
+
+`score` is the weighted average of `components`, from `0.0` to `100.0`. `verdict` is
+`strong` (>= 80), `moderate` (>= 60), `weak` (>= 40) or `poor`, and `knockout` whenever any
+entry of `knockouts` has `passed: false` — a hard filter outranks the number, as it does in
+a real ATS. `required_months` is `null` when the posting asks for no seniority, and
+`knockouts` is then empty: an absent requirement is never a failed one.
+
+The command is deterministic and AI-free: the same résumé and the same posting always
+produce the same score. It answers what a keyword matcher sees, not whether the candidate
+is a good fit — that decision stays with the caller.
 
 ## Compatibility
 
