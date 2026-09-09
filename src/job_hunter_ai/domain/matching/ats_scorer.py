@@ -18,7 +18,7 @@ from job_hunter_ai.domain.entities.ats_score import (
 from job_hunter_ai.domain.entities.job import Job
 from job_hunter_ai.domain.entities.job_requirements import JobRequirements
 from job_hunter_ai.domain.entities.resume_document import ResumeDocument
-from job_hunter_ai.domain.matching import experience
+from job_hunter_ai.domain.matching import contact, experience
 from job_hunter_ai.domain.matching.normalizer import canonical_text, mentions, tokens
 from job_hunter_ai.domain.time_utils import utc_now
 
@@ -39,8 +39,9 @@ WEAK_SCORE = 40.0
 # almost nothing. The ratio is the closest a text parser gets to "is this file readable".
 CHARS_PER_READABLE_PAGE = 700
 
+# The named sections a résumé is expected to carry. Contact is not among them: it is found
+# by shape rather than by heading (`domain/matching/contact.py`), as a real parser does.
 SECTIONS: Mapping[str, tuple[str, ...]] = {
-    "contact": ("email", "e mail", "telefone", "phone", "linkedin", "contato", "contact"),
     "experience": ("experiencia", "experience", "profissional", "employment"),
     "education": ("formacao", "educacao", "education", "academic", "escolaridade"),
     "skills": ("habilidades", "competencias", "skills", "tecnologias", "conhecimentos"),
@@ -66,7 +67,7 @@ class AtsScorer:
             "title_alignment": self._title_alignment(requirements.title or job.title, text),
             "experience": self._experience_score(seniority),
             "parseability": self._parseability(resume),
-            "sections": self._sections(text),
+            "sections": self._sections(text, resume.text),
         }
         knockouts = self._knockouts(seniority)
         total = sum(components[name] * weight for name, weight in WEIGHTS.items()) / 100
@@ -119,9 +120,10 @@ class AtsScorer:
         density = len(resume.text.strip()) / (pages * CHARS_PER_READABLE_PAGE)
         return min(100.0, 100.0 * density)
 
-    def _sections(self, text: str) -> float:
+    def _sections(self, text: str, raw: str) -> float:
         found = sum(1 for terms in SECTIONS.values() if any(mentions(text, t) for t in terms))
-        return 100.0 * found / len(SECTIONS)
+        found += int(contact.is_reachable(raw))
+        return 100.0 * found / (len(SECTIONS) + 1)
 
     def _knockouts(self, seniority: ExperienceMatch) -> tuple[Knockout, ...]:
         if seniority.required_months is None:

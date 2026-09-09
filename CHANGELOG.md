@@ -18,6 +18,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ### Fixed
 
+- `score-job` finds the contact details by shape (an email address, a phone number of at
+  least ten digits) instead of looking for the words `e-mail` or `telefone`. A résumé that
+  simply prints its address and number — as the reference formats do — was losing a fifth
+  of the `sections` component for a label it never needed
+  ([scoring.md](docs/scoring.md#sections-and-contact)).
 - `apply-job --method form` recognizes both confirmations GeekHunter gives. An application
   that goes through screening ends on `Obrigado pela sua candidatura`, not
   `Candidatura Completa`, and was being reported as failed after actually going through.

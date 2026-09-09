@@ -96,3 +96,14 @@ def test_score_should_be_the_weighted_sum_of_its_components_when_it_is_computed(
     # Assert
     expected = sum(score.components[name] * weight for name, weight in WEIGHTS.items()) / 100
     assert score.score == round(expected, 1)
+
+
+def test_score_should_count_the_contact_section_when_the_resume_only_prints_its_values():
+    # Arrange
+    resume = build_resume(f"Davi Naves davi@example.com (61) 92004-9576\n{RESUME_TEXT}")
+
+    # Act
+    score = AtsScorer().score(build_job(), JobRequirements(), resume)
+
+    # Assert
+    assert score.components["sections"] == 100.0

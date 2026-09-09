@@ -47,13 +47,22 @@ Declared in `domain/matching/ats_scorer.py` as `WEIGHTS`, and summing to 100:
 | `title_alignment` | 10 | share of the job title's words (minus stopwords) found in the résumé |
 | `experience` | 20 | `min(1, detected months / required months)`; no requirement scores 100 |
 | `parseability` | 10 | extracted characters against `700` per page, capped at 100 |
-| `sections` | 5 | share of the five expected sections the résumé names |
+| `sections` | 5 | share of the five expected sections, plus a reachable contact |
 
 `score` is their weighted average. The verdict is `strong` (≥ 80), `moderate` (≥ 60),
 `weak` (≥ 40) or `poor` — and `knockout` whenever a hard filter fails, whatever the number.
 
 An empty requirement list scores 100, never 0: a posting that asks for nothing cannot be
 missing anything.
+
+### Sections and contact
+
+Four sections are looked for by name — experience, education, skills and a summary — plus
+the contact, which is found **by shape** and not by heading: something that parses as an
+email address or as a phone number of at least ten digits. That is what a real parser
+does, and it is why `davi@example.com | (61) 90000-0000` counts even with no `E-mail:`
+label in front of it. A year range such as `2018-2021` is not mistaken for a number: the
+digit count tells them apart.
 
 ## Matching a term
 
