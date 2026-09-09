@@ -39,7 +39,9 @@ def clean_terms(*groups: str | list[str] | tuple[str, ...]) -> tuple[str, ...]:
 
 
 def _split(raw: str) -> list[str]:
-    return [part.strip(" .;:•-/") for part in re.split(r"[,;•\n]|(?: e/ou )|(?: e )", raw)]
+    """A leading dot is never punctuation here: `.NET` is the skill's own name."""
+    parts = re.split(r"[,;•\n]|(?: e/ou )|(?: e )", raw)
+    return [part.strip(" ;:•-/").rstrip(".").strip() for part in parts]
 
 
 def _trim(term: str) -> str:

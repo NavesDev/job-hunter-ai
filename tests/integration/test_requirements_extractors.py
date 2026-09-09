@@ -126,3 +126,14 @@ def test_geekhunter_extractor_should_ignore_a_list_when_its_heading_is_not_about
 
     # Assert
     assert "relatórios" not in requirements.required + requirements.preferred
+
+
+def test_geekhunter_extractor_should_keep_a_leading_dot_when_it_belongs_to_the_skill_name():
+    # Arrange
+    job = build_job(source="geekhunter", description="", raw={"skills": ".NET, C#, Docker."})
+
+    # Act
+    requirements = GeekHunterRequirementsExtractor().extract(job)
+
+    # Assert
+    assert requirements.required == (".NET", "C#", "Docker")
