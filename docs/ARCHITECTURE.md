@@ -30,22 +30,27 @@ A single distributable package (`job_hunter_ai`) under `src/`, with the layers a
 ```
 src/job_hunter_ai/
 ├── domain/
-│   ├── entities/    Job, ApplicationResult, CandidateProfile, SmtpConfig
-│   ├── ports/       JobSource, JobApplier, ApplierRegistry, JobRepository
+│   ├── entities/    Job, ApplicationResult, CandidateProfile, SmtpConfig,
+│   │                JobRequirements, ResumeDocument, AtsScore
+│   ├── ports/       JobSource, JobApplier, ApplierRegistry, JobRepository,
+│   │                RequirementsExtractor, ExtractorRegistry, ResumeReader
+│   ├── matching/    the deterministic ATS model (docs/scoring.md)
 │   ├── job_id.py    the deterministic job identity rule
 │   ├── time_utils.py  ISO 8601 UTC, the single time representation
 │   └── errors.py    typed exceptions, each carrying its contract `code`
-├── application/     ListJobsUseCase, ApplyJobUseCase
+├── application/     ListJobsUseCase, ApplyJobUseCase, ScoreJobUseCase
 ├── infra/
 │   ├── sources/     concrete JobSource (ManualJsonJobSource, geekhunter/) + registry
 │   ├── appliers/    EmailApplier + email_message builder + registry
+│   ├── requirements/  per-source RequirementsExtractor + registry
+│   ├── resume/      PdfResumeReader (the résumé as a parser reads it)
 │   └── repository/  SqliteJobRepository + migrations_runner + migrations/
 ├── config/
 │   ├── loader.py       non-sensitive settings from config/local/config.yaml
 │   ├── sources.py      per-platform settings from config/local/sources/<platform>.yaml
 │   └── credentials.py  SMTP credentials, only from .env
 └── cli/
-    ├── main.py      list-jobs, apply-job
+    ├── main.py      list-jobs, apply-job, login-platform, score-job
     ├── dependencies.py  the composition root (lazy factories)
     ├── serializers.py  entities → the JSON payloads of CONTRACT.md
     └── output.py    the only place that writes to stdout/stderr
@@ -72,8 +77,11 @@ tests/
 |---|---|---|---|
 | `JobSource` | `source` | `"manual"`, `"geekhunter"` | one new source per platform |
 | `JobApplier` | `(method, source)` | `"email" → "*"` (generic) | `"form" → <platform>`, mandatory per site |
+| `RequirementsExtractor` | `source` | `"geekhunter"`, generic fallback | one per platform that publishes structured requirements |
 
 With no applier registered for `(method, source)`, `apply-job` returns `status="skipped"` — never a silent failure, never a blocked flow.
+
+The extractor registry always answers: every posting has a description, so an unknown source falls back to the generic extractor instead of failing.
 
 ## Configuration vs credentials
 

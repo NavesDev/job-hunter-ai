@@ -31,12 +31,13 @@ Each one plugs into the existing structure and blocks none of the others.
 
 - [x] **Collect jobs straight from a platform** — done for **GeekHunter** (`list-jobs --source geekhunter`): its public listing comes in without a manual export, filtered by the local platform settings. Every further site (LinkedIn, Gupy, Indeed) is a new source class plus a registry entry — and its own Terms of Service check first (see [Responsible use](../README.md#responsible-use)).
 - [x] **Apply on sites that only accept a form** — done for **GeekHunter** (`apply-job --method form`): the platform's fixed form is filled from the profile and submitted in a browser, and the application counts as sent only when the platform confirms it. `submit: false` fills the form and stops, for a first look.
+- [x] **Know the odds before applying** — done (`score-job --job-id <id>`): the résumé PDF is scored against the job's requirements the way a screening robot would, with the matched and missing skills, the months of experience and the knockouts ([scoring.md](scoring.md)). Deterministic and AI-free; it reports, it does not decide.
 - [ ] **Resume from a failure without resending** — controlled send retries that cannot deliver the same application twice.
 
 ### Under evaluation
 
 - [ ] **Extract the address and subject from the job description** — today the external agent does this and passes the result as flags. It only becomes a command (`enrich-job`) if owning the extraction is worth the maintenance cost.
-- [ ] **Decide automatically whether to apply** — job × resume comparison with a score and a rationale (`decide-job`). Same evaluation: for now it belongs to the external orchestrator.
+- [ ] **Decide automatically whether to apply** — the *decision* is still the orchestrator's. What the tool now provides is the evidence for it: `score-job`, delivered above.
 
 ## Assumed limits
 

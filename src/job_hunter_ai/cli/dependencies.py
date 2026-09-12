@@ -15,6 +15,8 @@ from job_hunter_ai.domain.errors import InvalidInputError
 from job_hunter_ai.infra.appliers.email_applier import EmailApplier
 from job_hunter_ai.infra.appliers.geekhunter_form import GeekHunterFormApplier
 from job_hunter_ai.infra.appliers.registry import ANY_SOURCE, ApplierRegistry
+from job_hunter_ai.infra.requirements.registry import ExtractorRegistry
+from job_hunter_ai.infra.resume.pdf_resume_reader import PdfResumeReader
 from job_hunter_ai.infra.sessions.geekhunter_session import (
     DEFAULT_BASE_URL as GEEKHUNTER_BASE_URL,
 )
@@ -82,3 +84,13 @@ def build_session_registry(root: Path | None = None) -> SessionRegistry:
         )
 
     return SessionRegistry({GeekHunterJobSource.name: geekhunter_session})
+
+
+def build_extractor_registry() -> ExtractorRegistry:
+    """Which reading of a posting's requirements applies to each platform."""
+    return ExtractorRegistry()
+
+
+def build_resume_reader() -> PdfResumeReader:
+    """The résumé is scored from the very file the company receives: the PDF."""
+    return PdfResumeReader()

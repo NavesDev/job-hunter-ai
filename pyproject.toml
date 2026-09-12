@@ -24,6 +24,9 @@ dependencies = [
   "typer>=0.12",
   "python-dotenv>=1.0",
   "PyYAML>=6.0",
+  # Reading the real résumé PDF is what makes `score-job` see what a company sees.
+  # Pure Python, no transitive dependency: it stays in the default install.
+  "pypdf>=5.0",
 ]
 
 [project.optional-dependencies]
@@ -52,6 +55,7 @@ Issues = "https://github.com/NavesDev/job-hunter-ai/issues"
 list-jobs = "job_hunter_ai.cli.main:list_jobs_app"
 apply-job = "job_hunter_ai.cli.main:apply_job_app"
 login-platform = "job_hunter_ai.cli.main:login_app"
+score-job = "job_hunter_ai.cli.main:score_job_app"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -195,6 +195,35 @@ recorded in the history with the reason.
 
 The email body (`config/local/email-body.html`, falling back to `config/templates/email-body.example.html`) and the resume PDF (`config/local/resume.pdf`) are always fixed — only the method, the address and the subject vary per call. `--method form` needs an applier registered for the job's platform; without one it returns `status=skipped` instead of blocking the rest of the flow.
 
+### Score the resume against a job
+
+```bash
+score-job --job-id geekhunter:a1791ce2080c
+score-job --job-id manual:d4979b84f109 --resume other-resume.pdf
+```
+
+Simulates the screening a company's ATS runs before a human reads anything: the résumé PDF
+— the very file the company receives — against the job's requirements. It reaches no
+platform, records nothing and decides nothing.
+
+```json
+{
+  "score": 30.7,
+  "verdict": "knockout",
+  "components": {"required_skills": 0.0, "experience": 33.3, "parseability": 100.0, "...": 0},
+  "required_skills": {"matched": [], "missing": ["rastreabilidade", "Casos de Teste Automatizados"]},
+  "experience": {"required_months": 48, "detected_months": 16, "meets": false},
+  "knockouts": [{"rule": "min_experience", "passed": false, "detail": "48 months required, 16 detected"}]
+}
+```
+
+The number is never the whole answer: the matched and missing keywords, the months of
+experience read off the positions and the failed hard filters come with it, so you can see
+*why*. Deterministic and AI-free — the weights, the alias table and the sources they are
+based on are in [scoring.md](docs/scoring.md). A PDF with no extractable text raises
+`RESUME_ERROR` instead of scoring zero in silence, which is the honest answer: a scanned
+résumé is invisible to a real ATS too.
+
 ### Output and errors
 
 Every command prints structured JSON. Success goes to stdout; failures go to stderr with a non-zero exit code:
