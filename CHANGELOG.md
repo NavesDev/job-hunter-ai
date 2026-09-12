@@ -4,6 +4,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-12
+
 ### Added
 
 - `score-job --job-id <id>` simulates the screening a company's ATS runs, comparing the
@@ -15,42 +17,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
   The model, its weights and the sources behind them are in
   [scoring.md](docs/scoring.md); it is deterministic and AI-free, and it decides nothing.
   `--resume` scores another file without touching the configuration.
-
-### Fixed
-
-- `score-job` finds the contact details by shape (an email address, a phone number of at
-  least ten digits) instead of looking for the words `e-mail` or `telefone`. A résumé that
-  simply prints its address and number — as the reference formats do — was losing a fifth
-  of the `sections` component for a label it never needed
-  ([scoring.md](docs/scoring.md#sections-and-contact)).
-- `apply-job --method form` recognizes both confirmations GeekHunter gives. An application
-  that goes through screening ends on `Obrigado pela sua candidatura`, not
-  `Candidatura Completa`, and was being reported as failed after actually going through.
-- `apply-job --method form` drives GeekHunter's real screening screen: a dialog whose
-  fields are named by the question's own id, with its own consent about sensitive data
-  (covered by `accept_terms`, and documented) and its own submit button. The shape assumed
-  before came from the stand-in fixture, not the platform.
-- `apply-job --method form` fills every expected-salary field the form shows, not only the
-  first. A job open to more than one contract type asks for one expectation per type
-  (`salaryExpectation.CLT` **and** `.PJ`), each required, and the form was being refused
-  with no clue which field it meant.
-
-- `apply-job --method form` recognizes GeekHunter's screening questions. A job can answer an
-  accepted form with questions of its own instead of the confirmation, leaving the candidacy
-  unfinished; the applier now reports `APPLIER_ERROR` naming every question asked, instead of
-  calling it an application that may or may not have gone through. It answers none of them —
-  only the candidate knows their own answers.
-- `apply-job --method form` no longer reports an unconfirmed application without saying why.
-  The error now quotes the text the page ended on, names the URL, and keeps the page under
-  `diagnostics_dir` (`config/local/diagnostics`) — the candidate's own values scrubbed from
-  the quote. Nothing is re-submitted automatically.
-
-- `list-jobs --source geekhunter` no longer fails when the listing is shorter than the run
-  asked for. GeekHunter answers `404` past the last page instead of an empty one, which is
-  the end of the listing and not a failure: the source now returns what it collected. A `404`
-  on the very first page still raises `SOURCE_ERROR` — there the listing itself is gone.
-
-### Added
 
 - `login-platform --source <platform>`: keeps a signed-in session in a browser profile of the tool's
   own, so `apply-job --method form` applies as the candidate instead of anonymously — an
@@ -130,6 +96,40 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 - The GeekHunter platform investigation that settled the design, recorded as a
   [spec](docs/superpowers/specs/2026-09-05-geekhunter-source-design.md).
 
+### Fixed
+
+- `score-job` finds the contact details by shape (an email address, a phone number of at
+  least ten digits) instead of looking for the words `e-mail` or `telefone`. A résumé that
+  simply prints its address and number — as the reference formats do — was losing a fifth
+  of the `sections` component for a label it never needed
+  ([scoring.md](docs/scoring.md#sections-and-contact)).
+- `apply-job --method form` recognizes both confirmations GeekHunter gives. An application
+  that goes through screening ends on `Obrigado pela sua candidatura`, not
+  `Candidatura Completa`, and was being reported as failed after actually going through.
+- `apply-job --method form` drives GeekHunter's real screening screen: a dialog whose
+  fields are named by the question's own id, with its own consent about sensitive data
+  (covered by `accept_terms`, and documented) and its own submit button. The shape assumed
+  before came from the stand-in fixture, not the platform.
+- `apply-job --method form` fills every expected-salary field the form shows, not only the
+  first. A job open to more than one contract type asks for one expectation per type
+  (`salaryExpectation.CLT` **and** `.PJ`), each required, and the form was being refused
+  with no clue which field it meant.
+
+- `apply-job --method form` recognizes GeekHunter's screening questions. A job can answer an
+  accepted form with questions of its own instead of the confirmation, leaving the candidacy
+  unfinished; the applier now reports `APPLIER_ERROR` naming every question asked, instead of
+  calling it an application that may or may not have gone through. It answers none of them —
+  only the candidate knows their own answers.
+- `apply-job --method form` no longer reports an unconfirmed application without saying why.
+  The error now quotes the text the page ended on, names the URL, and keeps the page under
+  `diagnostics_dir` (`config/local/diagnostics`) — the candidate's own values scrubbed from
+  the quote. Nothing is re-submitted automatically.
+
+- `list-jobs --source geekhunter` no longer fails when the listing is shorter than the run
+  asked for. GeekHunter answers `404` past the last page instead of an empty one, which is
+  the end of the listing and not a failure: the source now returns what it collected. A `404`
+  on the very first page still raises `SOURCE_ERROR` — there the listing itself is gone.
+
 ## [0.1.0] - 2026-09-03
 
 ### Added
@@ -188,5 +188,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This p
 
 - `NotImplementedYetError` and the `NOT_IMPLEMENTED` contract code, temporary while the commands were stubs.
 
-[Unreleased]: https://github.com/NavesDev/job-hunter-ai/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/NavesDev/job-hunter-ai/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/NavesDev/job-hunter-ai/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/NavesDev/job-hunter-ai/releases/tag/v0.1.0
